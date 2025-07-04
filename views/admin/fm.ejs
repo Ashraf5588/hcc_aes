@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full Marks Management - AES</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/adminpannel.css">
+  <style>
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .subject-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .marks-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .marks-table th, .marks-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    .marks-table th {
+      background-color: #f4f4f4;
+    }
+    .marks-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .marks-input {
+      display: flex;
+      flex-direction: column;
+    }
+    .marks-input label {
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .marks-input input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .status-message {
+      margin-bottom: 15px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      background-color: #0069d9;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  
+  <div class="container">
+    <h1>Manage Full Marks</h1>
+    
+    <% if (locals.status) { %>
+      <div class="status-message success">
+        <% if (status === 'success') { %>
+          Full marks updated successfully!
+        <% } else if (status === 'created') { %>
+          New subject with full marks created successfully!
+        <% } %>
+      </div>
+    <% } %>
+    
+    <div class="form-header">
+      <div class="subject-selector">
+        <form action="/admin/fm" method="GET" id="subjectForm">
+          <label for="subject-select">Select Subject:</label>
+          <select name="subject" id="subject-select" onchange="this.form.submit()">
+            <option value="">-- Select Subject --</option>
+            <% if (locals.subjects && subjects.length > 0) { %>
+              <% subjects.forEach(subj => { %>
+                <option value="<%= subj.subject %>" <%= (locals.selectedSubject && selectedSubject === subj.subject) ? 'selected' : '' %>>
+                  <%= subj.subject %>
+                </option>
+              <% }) %>
+            <% } %>
+          </select>
+        </form>
+      </div>
+    </div>
+    
+    <form action="/admin/fm" method="POST">
+      <% if (locals.selectedSubject && selectedSubject) { %>
+        <input type="hidden" name="subject" value="<%= selectedSubject %>">
+      <% } else { %>
+        <div class="form-group">
+          <label for="subject">Subject:</label>
+          <input type="text" name="subject" id="subject" required placeholder="Enter subject name" class="form-control">
+        </div>
+      <% } %>
+      
+      <h3>Set Full Marks for Each Question</h3>
+      
+      <table class="marks-table">
+        <thead>
+          <tr>
+            <th>Question #</th>
+            <th>Full Marks</th>
+            <th>Question #</th>
+            <th>Full Marks</th>
+            <th>Question #</th>
+            <th>Full Marks</th>
+            <th>Question #</th>
+            <th>Full Marks</th>
+            <th>Question #</th>
+            <th>Full Marks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for(let i = 1; i <= 5; i++) { %>
+            <tr>
+              <% for(let j = 0; j < 5; j++) { %>
+                <% const questionNum = i + (j * 5); %>
+                <td><strong>Q<%= questionNum %></strong></td>
+                <td>
+                  <input 
+                    type="number" 
+                    name="<%= questionNum %>" 
+                    value="<%= (locals.fm && fm[questionNum]) ? fm[questionNum] : '' %>" 
+                    placeholder="Marks" 
+                    min="0" 
+                    max="100"
+                    step="0.5"
+                  >
+                </td>
+              <% } %>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+      
+      <div style="text-align: center; margin-top: 20px;">
+        <button type="submit" class="btn-primary">Save Full Marks</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // Simple validation script
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const subjectField = document.getElementById('subject');
+      if (subjectField && !subjectField.value.trim()) {
+        e.preventDefault();
+        alert('Please enter a subject name');
+      }
+    });
+  </script>
+</body>
+</html>

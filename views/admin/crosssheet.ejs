@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markslip | Answer Analysis System</title>
+  
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+  <!-- Custom CSS for skyblue/brown theme -->
+  <style>
+    :root {
+      --primary-color: #87CEEB; /* Sky Blue */
+      --primary-light: #b3e0f2;
+      --primary-dark: #5f9ea0;
+      --secondary-color: #8B4513; /* Brown */
+      --secondary-light: #a67b5b;
+      --accent-color: #f5f5f5;
+      --text-dark: #333333;
+      --text-light: #ffffff;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fa;
+      color: var(--text-dark);
+      padding-bottom: 30px;
+    }
+    
+    .page-header {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+      color: var(--text-light);
+      padding: 20px 0;
+      margin-bottom: 30px;
+      border-bottom: 5px solid var(--secondary-color);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .card {
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+      overflow: hidden;
+    }
+    
+    .card-header {
+      background-color: var(--primary-color);
+      color: var(--text-dark);
+      font-weight: 600;
+      border-bottom: 2px solid var(--secondary-color);
+      padding: 15px 20px;
+    }
+    
+    .form-select {
+      border: 2px solid var(--primary-light);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 1rem;
+      box-shadow: none;
+      transition: all 0.3s ease;
+    }
+    
+    .form-select:focus {
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 0 0.25rem rgba(139, 69, 19, 0.25);
+    }
+    
+    .btn-primary {
+      background-color: var(--primary-color);
+      border-color: var(--primary-dark);
+      color: var(--text-dark);
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      border-color: var(--primary-dark);
+      color: var(--text-light);
+    }
+    
+    .btn-secondary {
+      background-color: var(--secondary-color);
+      border-color: var(--secondary-color);
+      color: var(--text-light);
+    }
+    
+    .btn-secondary:hover {
+      background-color: var(--secondary-light);
+      border-color: var(--secondary-light);
+    }
+    
+    .term-selector {
+      padding: 15px;
+      background-color: var(--accent-color);
+      border-radius: 8px;
+      border-left: 4px solid var(--secondary-color);
+      margin: 15px 0;
+    }
+    
+    .term-option {
+      display: inline-block;
+      padding: 8px 15px;
+      margin-right: 10px;
+      background-color: white;
+      border: 1px solid var(--primary-light);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .term-option:hover, .term-option.active {
+      background-color: var(--primary-color);
+      border-color: var(--primary-dark);
+    }
+    
+    table.dataTable {
+      width: 100% !important;
+      margin-bottom: 20px !important;
+      border-collapse: separate !important;
+      border-spacing: 0;
+    }
+    
+    table.dataTable thead th {
+      background-color: var(--primary-color);
+      color: var(--text-dark);
+      border-bottom: 2px solid var(--secondary-color) !important;
+      font-weight: 600;
+      padding: 12px 10px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    
+    table.dataTable thead th:hover {
+      background-color: var(--primary-dark);
+      color: var(--text-light);
+    }
+    
+    table.dataTable thead th:hover::after {
+      content: "\f0c5"; /* Font Awesome copy icon */
+      font-family: "Font Awesome 5 Free";
+      font-weight: 900;
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+    
+    .copy-tooltip {
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      font-size: 0.8rem;
+      font-weight: 500;
+      pointer-events: none;
+      animation: fadeInOut 1.5s ease;
+    }
+    
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(10px); }
+      20% { opacity: 1; transform: translateY(0); }
+      80% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-10px); }
+    }
+    
+    table.dataTable tbody tr:nth-of-type(odd) {
+      background-color: rgba(135, 206, 235, 0.1);
+    }
+    
+    table.dataTable tbody tr:hover {
+      background-color: rgba(135, 206, 235, 0.3);
+    }
+    
+    .dt-buttons {
+      margin-bottom: 15px;
+    }
+    
+    .dataTables_filter input {
+      border: 2px solid var(--primary-light);
+      border-radius: 5px;
+      padding: 6px 12px;
+    }
+    
+    /* For optgroup styling in select */
+    optgroup {
+      font-weight: bold;
+      font-style: normal;
+      background-color: var(--primary-light);
+      color: var(--text-dark);
+      padding: 5px;
+    }
+    
+    option {
+      font-weight: normal;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+ 
+  <!-- Header Section -->
+  <header class="page-header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h1><i class="fas fa-table me-2"></i> Markslip</h1>
+          <p class="lead mb-0">Comprehensive view of student performance data</p>
+        </div>
+        <div class="col-md-4 text-end">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-end mb-0">
+              <li class="breadcrumb-item"><a href="/admin/term/FIRST" class="text-white">Admin Dashboard</a></li>
+              <li class="breadcrumb-item active" aria-current="page">MarksSlip</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Selection Controls -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-filter me-2"></i> Filter Options</span>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="subjectClass" class="form-label fw-bold">Select Class & Subject</label>
+                <select name="subjectClass" id="subjectClass" class="form-select">
+                  <option value="" selected disabled>--Choose a Class and Subject--</option>
+                  <% 
+                    // Group subjects by class and section
+                    const classSubjectMap = {};
+                    
+                    // First, get all unique class-section combinations
+                    sortedClassList.forEach(classInfo => {
+                      const key = `${classInfo.studentClass}-${classInfo.section}`;
+                      if (!classSubjectMap[key]) {
+                        classSubjectMap[key] = {
+                          studentClass: classInfo.studentClass,
+                          section: classInfo.section,
+                          subjects: []
+                        };
+                      }
+                    });
+                    
+                    // Then, populate subjects for each class
+                    sortedsubjectlist.forEach(subject => {
+                      const key = `${subject.forClass}-`;
+                      // Find all sections for this class and add the subject
+                      Object.keys(classSubjectMap).forEach(mapKey => {
+                        if (mapKey.startsWith(key)) {
+                          const existingSubject = classSubjectMap[mapKey].subjects.find(s => s.subject === subject.subject);
+                          if (!existingSubject) {
+                            classSubjectMap[mapKey].subjects.push(subject);
+                          }
+                        }
+                      });
+                    });
+                    
+                    // Sort classes numerically
+                    const sortedKeys = Object.keys(classSubjectMap).sort((a, b) => {
+                      const classA = parseInt(a.split('-')[0]);
+                      const classB = parseInt(b.split('-')[0]);
+                      if (classA !== classB) return classA - classB;
+                      return a.localeCompare(b);
+                    });
+                  %>
+                  
+                  <% sortedKeys.forEach(key => { 
+                    const classData = classSubjectMap[key];
+                    if (classData.subjects.length > 0) {
+                  %>
+                    <optgroup label="Class <%= classData.studentClass %> - <%= classData.section %>">
+                      <% classData.subjects.forEach(subject => { %>
+                        <option value="/crossheet?class=<%= classData.studentClass %>&section=<%= classData.section %>&subject=<%= subject.subject %>">
+                          <%= subject.subject %>
+                        </option>
+                      <% }); %>
+                    </optgroup>
+                  <% 
+                    }
+                  }); %>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <div class="term-selector">
+                  <label class="form-label fw-bold mb-2">Select Term</label>
+                  <div>
+                    <% terminalList.forEach((term)=>{ %>
+                      <div class="term-option" data-term="<%= term.terminal %>" onclick="addTerminal('<%= term.terminal %>')">
+                        <%= term.terminal %>
+                      </div>
+                    <% }); %>
+                    <script>
+    function addTerminal(terminal) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('terminal', terminal);
+      window.location.href = url.toString(); // Redirect to new URL
+    }
+  </script>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Data Section -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-table me-2"></i> Student Data</span>
+          </div>
+          <div class="card-body">
+            <table id="crossSheetTable" class="table table-striped table-hover" style="width:100%">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Roll</th>
+                  <th>Class</th>
+                  <th>Section</th>
+                  <th>Final Marks</th>
+                  <th>Original Marks</th>
+                  
+                  <th>Subject</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% sortedMarkslip.forEach(student => { %>
+                  <tr>
+                    <td><%= student.name %></td>
+                    <td><%= student.roll %></td>
+                    <td><%= student.studentClass %></td>
+                    <td><%= student.section %></td>
+                    
+                   
+
+                      <td>
+  <% 
+    const subject = student.subject;
+    const marks = Math.ceil(student.totalMarks);
+    const studentClass = student.studentClass;
+    
+    const isSpecialSubject = (subject === "Computer" && studentClass !== '9' && studentClass !== '10' || subject === "Opt.Math" && studentClass !== '9' && studentClass !== '10'|| subject === "Delight");
+
+    if (!isSpecialSubject) {
+      if (marks >= 15 && marks <= 18) {
+  %>
+        18
+  <% 
+      } else { 
+  %>
+        <%= marks %>
+  <% 
+      } 
+    } else {
+      if (marks >= 7 && marks <= 9) {
+  %>
+        9
+  <%
+      } else { 
+  %>
+        <%= marks %>
+  <% 
+      } 
+    } 
+  %>
+</td>
+<td><%= student.totalMarks %></td>
+                    <td><%= student.subject %></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap & DataTables JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.0.slim.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
+  <!-- DataTables Buttons Extension for Column Copy -->
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.colVis.min.js"></script>
+  <!-- Font Awesome for icons -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+  <script>
+    // Initialize DataTable with column copy feature
+    $(document).ready(function() {
+      var table = $('#crossSheetTable').DataTable({
+        dom: 'Bfrtip',
+        order: [[3, 'asc'], [1, 'asc']],
+        columnDefs: [
+  { targets: 4, orderable: false } // Disable sorting on "Marks" column
+],
+        buttons: [
+          {
+            extend: 'copy',
+            text: '<i class="fas fa-copy"></i> Copy',
+            className: 'btn btn-primary btn-sm'
+          },
+          {
+            extend: 'excel',
+            text: '<i class="fas fa-file-excel"></i> Excel',
+            className: 'btn btn-secondary btn-sm'
+          },
+          {
+            extend: 'pdf',
+            text: '<i class="fas fa-file-pdf"></i> PDF',
+            className: 'btn btn-primary btn-sm'
+          },
+          {
+            extend: 'print',
+            text: '<i class="fas fa-print"></i> Print',
+            className: 'btn btn-secondary btn-sm'
+          },
+          {
+            extend: 'colvis',
+            text: '<i class="fas fa-columns"></i> Columns',
+            className: 'btn btn-primary btn-sm'
+          }
+        ],
+        responsive: true,
+        pageLength: -1,
+        language: {
+          search: '<i class="fas fa-search"></i>',
+          searchPlaceholder: 'Search records'
+        }
+      });
+    
+      
+     $('#crossSheetTable thead th').eq(4).css('cursor', 'pointer').attr('title', 'Click to copy Marks');
+
+$('#crossSheetTable').on('click', 'thead th:eq(4)', function () {
+  var columnIndex = 4;
+  var columnData = [];
+
+  // Add header
+  var headerText = $(this).text().trim();
+  columnData.push(headerText);
+
+  // Add all cell data from this column
+  table.column(columnIndex).nodes().each(function (cell) {
+    columnData.push($(cell).text().trim());
+  });
+
+  // Copy to clipboard
+  var $temp = $('<textarea>');
+  $('body').append($temp);
+  $temp.val(columnData.join('\n')).select();
+  document.execCommand('copy');
+  $temp.remove();
+
+  // Optional: highlight and tooltip
+  var originalBgColor = $(this).css('background-color');
+  $(this).css('background-color', 'var(--secondary-color)').css('color', 'white');
+
+  var $tooltip = $('<div class="copy-tooltip">Marks column copied!</div>');
+  $tooltip.css({
+    position: 'absolute',
+    top: $(this).offset().top - 30,
+    left: $(this).offset().left + ($(this).width() / 2) - 60,
+    background: 'var(--secondary-color)',
+    color: 'white',
+    padding: '5px 10px',
+    borderRadius: '4px',
+    zIndex: 1000,
+    opacity: 0
+  });
+
+  $('body').append($tooltip);
+  $tooltip.animate({ opacity: 1, top: '-=10' }, 200).delay(1000).animate({ opacity: 0, top: '-=10' }, 200, function () {
+    $(this).remove();
+  });
+
+  setTimeout(function () {
+    $('#crossSheetTable thead th').eq(4).css('background-color', originalBgColor).css('color', 'var(--text-dark)');
+  }, 500);
+});
+        
+        // Show copy feedback
+        var originalBgColor = $(this).css('background-color');
+        $(this).css('background-color', 'var(--secondary-color)').css('color', 'white');
+        
+        // Create and show tooltip
+        var $tooltip = $('<div class="copy-tooltip">Column copied!</div>');
+        $tooltip.css({
+          position: 'absolute',
+          top: $(this).offset().top - 30,
+          left: $(this).offset().left + ($(this).width() / 2) - 45,
+          background: 'var(--secondary-color)',
+          color: 'white',
+          padding: '5px 10px',
+          borderRadius: '4px',
+          zIndex: 1000,
+          opacity: 0
+        });
+        
+        $('body').append($tooltip);
+        $tooltip.animate({opacity: 1, top: '-=10'}, 200).delay(1000).animate({opacity: 0, top: '-=10'}, 200, function() {
+          $(this).remove();
+          // Reset header color after animation
+          $(this).css('background-color', originalBgColor).css('color', 'var(--text-dark)');
+        });
+        
+        // Reset header color
+        setTimeout(function() {
+          $(this).css('background-color', originalBgColor).css('color', 'var(--text-dark)');
+        }.bind(this), 500);
+      });
+
+      // Subject Class selector event
+      document.getElementById('subjectClass').addEventListener('change', function() {
+        window.location.href = this.value;
+      });
+
+      // Term selector functionality
+      document.querySelectorAll('.term-option').forEach(function(term) {
+        term.addEventListener('click', function() {
+          // Remove active class from all terms
+          document.querySelectorAll('.term-option').forEach(function(t) {
+            t.classList.remove('active');
+          });
+          // Add active class to clicked term
+          this.classList.add('active');
+          
+          // Here you would typically handle the term selection with AJAX or page refresh
+          // For now just show an alert
+          const selectedTerm = this.dataset.term;
+          alert('Selected Term: ' + selectedTerm + ' (This would update the data in a real application)');
+        });
+      });
+    </script>
+        <script>
+        function copy(event) {
+            var target = event.target || event.srcElement;
+            var copyText = target.innerText || target.textContent;
+            navigator.clipboard.writeText(copyText);
+        }
+
+        document.querySelectorAll("td:nth-child(5)").forEach(elem => elem.addEventListener("click", copy));
+    </script>
+</body>
+</html>

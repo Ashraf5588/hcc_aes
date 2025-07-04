@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Management | Admin Panel</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #0ea5e9;          /* Sky Blue */
+      --primary-dark: #0284c7;     /* Darker Sky Blue */
+      --secondary: #8b5a2b;        /* Brown */
+      --secondary-dark: #6b4423;   /* Darker Brown */
+      --accent: #a16207;           /* Amber Brown */
+      --light: #f8fafc;
+      --white: #ffffff;
+      --dark: #1e293b;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0ea5e9 0%, #8b5a2b 50%, #0284c7 100%);
+      min-height: 100vh;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .admin-container {
+      padding: 2rem 0;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* Header Styles */
+    .admin-header {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .admin-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    .admin-header h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .admin-header h1 i {
+      color: var(--primary);
+      font-size: 1.5rem;
+    }
+
+    .admin-header .subtitle {
+      color: var(--gray-600);
+      margin: 0;
+      font-size: 0.875rem;
+      font-weight: 400;
+    }
+
+    /* Form Card Styles */
+    .form-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .form-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--secondary), var(--accent));
+    }
+
+    .form-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-card h3 i {
+      color: var(--secondary);
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 500;
+      color: var(--gray-700);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-label i {
+      color: var(--primary);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.875rem;
+      background: var(--white);
+      color: var(--dark);
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+      background: var(--white);
+    }
+
+    .form-control::placeholder {
+      color: var(--gray-600);
+    }
+
+    /* Button Styles */
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s ease;
+      font-family: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: var(--white);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      color: var(--white);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+      color: var(--white);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      color: var(--white);
+    }
+
+    /* Table Card Styles */
+    .table-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .table-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .table-card h3 i {
+      color: var(--primary);
+    }
+
+    .badge {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: var(--white);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    /* Table Styles */
+    .table-responsive {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .table {
+      margin: 0;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table thead {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    }
+
+    .table th {
+      padding: 1rem;
+      font-weight: 600;
+      color: var(--white);
+      border: none;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    .table th i {
+      margin-right: 0.5rem;
+    }
+
+    .table td {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .table tbody tr {
+      transition: all 0.3s ease;
+      background: var(--white);
+    }
+
+    .table tbody tr:hover {
+      background: var(--gray-50);
+      transform: scale(1.01);
+    }
+
+    /* Terminal Badge */
+    .terminal-badge {
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+      color: var(--white);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      display: inline-block;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-decoration: none;
+      margin-right: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      transition: all 0.3s ease;
+      border: 1px solid transparent;
+    }
+
+    .edit-btn {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--success);
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    .edit-btn:hover {
+      background: var(--success);
+      color: var(--white);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .delete-btn {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .delete-btn:hover {
+      background: var(--error);
+      color: var(--white);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--gray-600);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      color: var(--gray-300);
+      margin-bottom: 1rem;
+    }
+
+    .empty-state h5 {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--gray-700);
+    }
+
+    /* Zoom Controls */
+    .zoom-controls {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .zoom-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: var(--white);
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .zoom-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
+    }
+
+    .zoom-reset {
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+      font-size: 0.7rem;
+    }
+
+    /* Zoom Level Indicator */
+    .zoom-level-indicator {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(30, 41, 59, 0.9);
+      color: var(--white);
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Zoom Transition */
+    .zoom-transition {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Alert Styles */
+    .alert {
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .alert-success {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .alert-dismissible .btn-close {
+      margin-left: auto;
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .admin-container {
+        padding: 1rem 0;
+      }
+
+      .container {
+        padding: 0 0.5rem;
+      }
+
+      .admin-header,
+      .form-card,
+      .table-card {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .admin-header h1 {
+        font-size: 1.5rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+      }
+
+      .form-card h3,
+      .table-card h3 {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+      }
+
+      .action-btn {
+        margin-bottom: 0.25rem;
+        font-size: 0.7rem;
+        padding: 0.4rem 0.8rem;
+      }
+
+      .zoom-controls {
+        bottom: 15px;
+        right: 15px;
+      }
+
+      .zoom-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 0.9rem;
+      }
+
+      .zoom-level-indicator {
+        bottom: 15px;
+        left: 15px;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .admin-header,
+      .form-card,
+      .table-card {
+        padding: 1rem;
+      }
+
+      .btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8rem;
+      }
+    }
+
+    /* Animation Keyframes */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+
+    /* Initial Animation */
+    .admin-header,
+    .form-card,
+    .table-card {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .form-card {
+      animation-delay: 0.1s;
+    }
+
+    .table-card {
+      animation-delay: 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container zoomable-content zoom-transition">
+    <div class="container">
+      <!-- Header -->
+      <div class="admin-header">
+        <h1>
+          <i class="fas fa-terminal"></i>
+          Terminal Management
+        </h1>
+        <p class="subtitle">Manage examination terminals and periods</p>
+      </div>
+
+      <!-- Add/Edit Terminal Form -->
+      <div class="form-card">
+        <h3>
+          <i class="fas fa-<%= editing ? 'edit' : 'plus' %>"></i>
+          <%= editing ? 'Edit Terminal' : 'Add New Terminal' %>
+        </h3>
+        
+        <form action="<%= editing ? `/admin/terminal/${terminalData._id}` : '/admin/terminal' %>" method="POST">
+          <div class="form-group">
+            <label for="name" class="form-label">
+              <i class="fas fa-tag me-2"></i>Terminal Name
+            </label>
+            <input 
+              type="text" 
+              id="name" 
+              name="terminal" 
+              class="form-control" 
+              value="<%= editing ? terminalData.terminal : '' %>" 
+              placeholder="Enter terminal name (e.g., First Terminal, Midterm, Final)"
+              required
+            >
+          </div>
+          
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-<%= editing ? 'save' : 'plus' %>"></i>
+            <%= editing ? 'Update Terminal' : 'Add Terminal' %>
+          </button>
+          
+          <% if (editing) { %>
+            <a href="/admin/terminal" class="btn btn-secondary ms-2">
+              <i class="fas fa-times"></i>
+              Cancel
+            </a>
+          <% } %>
+        </form>
+      </div>
+
+      <!-- Terminals List -->
+      <div class="table-card">
+        <h3>
+          <i class="fas fa-list"></i>
+          All Terminals
+          <span class="badge bg-primary ms-2"><%= terminalList.length %></span>
+        </h3>
+        
+        <% if (terminalList.length > 0) { %>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th><i class="fas fa-hashtag me-2"></i>S.No.</th>
+                  <th><i class="fas fa-terminal me-2"></i>Terminal Name</th>
+                  <th><i class="fas fa-cogs me-2"></i>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% terminalList.forEach((term, index) => { %>
+                  <tr>
+                    <td><strong><%= index + 1 %></strong></td>
+                    <td>
+                      <span class="terminal-badge"><%= term.terminal %></span>
+                    </td>
+                    <td>
+                      <a href="/admin/terminal/<%= term._id %>/edit-terminal?editing=true" 
+                         class="action-btn edit-btn"
+                         title="Edit Terminal">
+                        <i class="fas fa-edit"></i>
+                        Edit
+                      </a>
+                      
+                      <a href="/delete/terminal/<%= term._id %>" 
+                         class="action-btn delete-btn"
+                         onclick="return confirm('Are you sure you want to delete \'<%= term.terminal %>\' terminal? This action cannot be undone.')"
+                         title="Delete Terminal">
+                        <i class="fas fa-trash-alt"></i>
+                        Delete
+                      </a>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h5>No Terminals Found</h5>
+            <p>Start by adding your first terminal above.</p>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Back to Admin Panel -->
+      <div class="text-center mt-4">
+        <a href="/admin/term/first" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          Back to Admin Panel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zoom Controls -->
+  <div class="zoom-controls">
+    <button class="zoom-btn zoom-in" title="Zoom In (Ctrl + +)" aria-label="Zoom In">
+      <i class="fas fa-plus"></i>
+    </button>
+    <button class="zoom-btn zoom-out" title="Zoom Out (Ctrl + -)" aria-label="Zoom Out">
+      <i class="fas fa-minus"></i>
+    </button>
+    <button class="zoom-btn zoom-reset" title="Reset Zoom (Ctrl + 0)" aria-label="Reset Zoom">
+      100%
+    </button>
+  </div>
+
+  <!-- Zoom Level Indicator -->
+  <div class="zoom-level-indicator">
+    <i class="fas fa-search-plus me-2"></i>
+    <span id="zoom-percentage">100%</span>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Custom JavaScript -->
+  <script>
+    // Zoom functionality
+    let currentZoom = 1;
+    const minZoom = 0.5;
+    const maxZoom = 3;
+    const zoomStep = 0.1;
+    
+    const zoomableContent = document.querySelector('.zoomable-content');
+    const zoomPercentageElement = document.getElementById('zoom-percentage');
+    const zoomResetBtn = document.querySelector('.zoom-reset');
+    
+    function updateZoom(newZoom) {
+      currentZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+      zoomableContent.style.transform = `scale(${currentZoom})`;
+      
+      const percentage = Math.round(currentZoom * 100);
+      zoomPercentageElement.textContent = `${percentage}%`;
+      zoomResetBtn.textContent = `${percentage}%`;
+      
+      // Store zoom level in localStorage
+      localStorage.setItem('terminalPageZoom', currentZoom);
+    }
+    
+    function zoomIn() {
+      updateZoom(currentZoom + zoomStep);
+    }
+    
+    function zoomOut() {
+      updateZoom(currentZoom - zoomStep);
+    }
+    
+    function resetZoom() {
+      updateZoom(1);
+    }
+    
+    // Load saved zoom level
+    const savedZoom = localStorage.getItem('terminalPageZoom');
+    if (savedZoom) {
+      updateZoom(parseFloat(savedZoom));
+    }
+    
+    // Event listeners for zoom buttons
+    document.querySelector('.zoom-in').addEventListener('click', zoomIn);
+    document.querySelector('.zoom-out').addEventListener('click', zoomOut);
+    document.querySelector('.zoom-reset').addEventListener('click', resetZoom);
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case '=':
+          case '+':
+            e.preventDefault();
+            zoomIn();
+            break;
+          case '-':
+            e.preventDefault();
+            zoomOut();
+            break;
+          case '0':
+            e.preventDefault();
+            resetZoom();
+            break;
+        }
+      }
+    });
+    
+    // Mouse wheel zoom (for desktop)
+    document.addEventListener('wheel', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
+        updateZoom(currentZoom + delta);
+      }
+    }, { passive: false });
+    
+    // Touch/pinch zoom for mobile devices
+    let lastTouchDistance = 0;
+    let isZooming = false;
+    
+    function getTouchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    document.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        lastTouchDistance = getTouchDistance(e.touches);
+        isZooming = true;
+      }
+    });
+    
+    document.addEventListener('touchmove', function(e) {
+      if (e.touches.length === 2 && isZooming) {
+        e.preventDefault();
+        const currentDistance = getTouchDistance(e.touches);
+        const scaleChange = (currentDistance - lastTouchDistance) * 0.01;
+        updateZoom(currentZoom + scaleChange);
+        lastTouchDistance = currentDistance;
+      }
+    }, { passive: false });
+    
+    document.addEventListener('touchend', function(e) {
+      if (e.touches.length < 2) {
+        isZooming = false;
+      }
+    });
+
+    // Add smooth animations
+    document.addEventListener('DOMContentLoaded', function() {
+      // Animate cards on load
+      const cards = document.querySelectorAll('.admin-header, .form-card, .table-card');
+      cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          card.style.transition = 'all 0.6s ease';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, index * 150);
+      });
+
+      // Form validation feedback
+      const form = document.querySelector('form');
+      const input = document.querySelector('#name');
+      
+      form.addEventListener('submit', function(e) {
+        if (input.value.trim().length < 2) {
+          e.preventDefault();
+          input.style.borderColor = 'var(--error)';
+          input.focus();
+          
+          // Show error message
+          let errorMsg = input.parentNode.querySelector('.error-message');
+          if (!errorMsg) {
+            errorMsg = document.createElement('small');
+            errorMsg.className = 'error-message text-danger mt-1 d-block';
+            errorMsg.textContent = 'Terminal name must be at least 2 characters long.';
+            input.parentNode.appendChild(errorMsg);
+          }
+          
+          setTimeout(() => {
+            input.style.borderColor = '';
+            if (errorMsg) errorMsg.remove();
+          }, 3000);
+        }
+      });
+
+      // Success message for form submissions
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success')) {
+        const successAlert = document.createElement('div');
+        successAlert.className = 'alert alert-success alert-dismissible fade show';
+        successAlert.innerHTML = `
+          <i class="fas fa-check-circle me-2"></i>
+          Terminal ${urlParams.get('success') === 'added' ? 'added' : 'updated'} successfully!
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(successAlert, document.querySelector('.form-card'));
+      }
+
+      // Show zoom controls after page load
+      setTimeout(() => {
+        document.querySelector('.zoom-controls').style.opacity = '1';
+        document.querySelector('.zoom-level-indicator').style.opacity = '1';
+      }, 1000);
+    });
+
+    // Hide zoom indicator after inactivity
+    let zoomIndicatorTimeout;
+    function showZoomIndicator() {
+      const indicator = document.querySelector('.zoom-level-indicator');
+      indicator.style.opacity = '1';
+      clearTimeout(zoomIndicatorTimeout);
+      zoomIndicatorTimeout = setTimeout(() => {
+        indicator.style.opacity = '0.7';
+      }, 3000);
+    }
+
+    // Show indicator when zoom changes
+    document.querySelector('.zoom-in').addEventListener('click', showZoomIndicator);
+    document.querySelector('.zoom-out').addEventListener('click', showZoomIndicator);
+    document.querySelector('.zoom-reset').addEventListener('click', showZoomIndicator);
+  </script>
+</body>
+</html>

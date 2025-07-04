@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin</title>
+  <link rel="stylesheet" href="/adminpannel.css">
+  <link rel="stylesheet" href="/nav.css">
+</head>
+<body>
+  <%- include('../partials/nav',{currentPage:'admin'}) %> <br>
+  <center><h1>Welcome, <span style="color: darkblue;">Admin</span></h1></center>
+<br>
+<center>
+  <div class="head">
+    <h1>Class <span style="color:darkblue;"><u>Information</u></span></h1></div>
+  <form action="<%= editing ? `/admin/class/${classId}` : '/admin/class' %>" method="POST">
+  <label for="class">Class:</label>
+    <input type="text" id="class" name="studentClass" required placeholder="Add New Class" value="<%= editing? classedit.studentClass:'' %>"><br><br>
+  
+    <label for="section">Section:</label>
+    <input type="text" id="section" name="section" required placeholder="Add New Section" value="<%= editing? classedit.section:'' %>"><br><br>
+    <button type="submit" class="addbutton">Add New</button>
+  
+  </form>
+  <table cellspacing="0px" border="1"> 
+    <tr>
+    <th>Class</th>
+    <th>Section</th>
+    <th>Action</th>
+  </tr>
+  <tr>
+    <% studentClasslist.forEach((studentclass)=>{ %>
+  
+  
+  <td><%= studentclass.studentClass %> </td>
+  <td><%= studentclass.section %></td>
+<td><a href="/admin/editclass/<%=studentclass._id%>?editing=true" ><button id="classedit">Edit</button></a> <a href="/delete/class/<%=studentclass._id%>" onclick= "return confirm('Are you sure you want to delete class <%=studentclass.studentClass%> <%=studentclass.section%> ')" class="deletebtn">Delete<i class="fa-solid fa-trash" style="color: #ff0000;"></i></a></td>
+  </tr>
+  <% }) %>
+  </table>
+  
+  </center>
+  
+<script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+<script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+</body>
+</html>
