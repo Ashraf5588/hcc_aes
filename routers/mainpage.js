@@ -145,5 +145,5 @@ student.get('/debug/subjects', async (req, res) => {
   }
 });
 student.get('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecord)
-
+student.post('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecordpost)
 module.exports = student;

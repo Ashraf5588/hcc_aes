@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const jwt = require("jsonwebtoken");
 var docxConverter = require('docx-pdf');
+const bs = require("bikram-sambat-js")
 
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
@@ -165,7 +166,7 @@ exports.adminloginpost = async (req, res, next) => {
       const token = jwt.sign(
         { user: user.username, role: user.role },
         "mynameisashraf!23_9&",
-        { expiresIn: "720h" }
+        { expiresIn: "1440h" }
       );
       console.log("Generated Token:", token); // Log the generated token
 
@@ -198,7 +199,7 @@ exports.teacherloginpost = async (req, res, next) => {
       const teachertoken = jwt.sign(
         { user: user.username, role: user.role },
         "mynameisashrafteacher!23_9&",
-        { expiresIn: "720h" }
+        { expiresIn: "1440h" }
       );
       // Log the generated token
 
@@ -229,7 +230,7 @@ exports.studentloginpost = async (req, res, next) => {
       const studenttoken = jwt.sign(
         { user: user.username, role: user.role },
         "mynameisashrafstudent!23_9&",
-        { expiresIn: "720h" }
+        { expiresIn: "1440h" }
       );
       console.log("Generated Token:", studenttoken); // Log the generated token
 
@@ -936,30 +937,54 @@ exports.cross_sheet = async (req, res, next) => {
   });
 };
 exports.studentrecord = async (req, res, next) => {
-  try {
-    const file = req.file;
-    if (!file) {
-      return res.status(400).send("No file uploaded.");
-    }
 
-    // Process the CSV file
-    const results = [];
-    fs.createReadStream(file.path)
-      .pipe(csv())
-      .on("data", (data) => results.push(data))
-      .on("end", () => {
-        // Save the student records to the database
-        Student.insertMany(results)
-          .then(() => {
-            res.status(200).send("Student records uploaded successfully.");
-          })
-          .catch((err) => {
-            console.error("Error saving student records:", err);
-            res.status(500).send("Error saving student records.");
-          });
-      });
-  } catch (error) {
-    console.error("Error in studentrecord function:", error);
-    res.status(500).send("Error processing student records.");
-  }
+const year = new Date();
+const nepaliYear = bs.ADToBS(`${year}`)
+console.log(nepaliYear)
+
+ res.render("admin/schoolstudentrecord", {
+    editing: false,
+    nepaliYear,
+  });
 };
+exports.studentrecordpost = async (req, res, next) => {
+try
+{
+
+  const { studentrecordschema } = require("../model/adminschema");
+const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
+//insert new record, delete old record from studentrecord collection when new file is uploaded csv,
+
+
+  if (!req.file || req.file.mimetype !== 'text/csv') {
+    return res.status(400).send("Please upload a valid CSV file");
+  }
+  
+  // Read the CSV file
+  const csvFilePath = req.file.path;
+  const csv = require('csvtojson');
+  
+  // Convert CSV to JSON
+  const jsonArray = await csv().fromFile(csvFilePath);
+  
+  // Insert JSON data into MongoDB
+  await modal.deleteMany({});
+
+  await modal.insertMany(jsonArray);
+  
+  // Delete the uploaded file after processing
+  fs.unlinkSync(csvFilePath);
+ console.log("File uploaded:", req.file);
+  if (!req.file) {
+    return res.status(400).send("No file uploaded");
+  } 
+  else
+  {
+    res.redirect("/studentrecord");
+  }
+}catch(err)
+{
+  console.log(err);
+  res.status(500).send("Error processing student records: " + err.message);
+}
+}

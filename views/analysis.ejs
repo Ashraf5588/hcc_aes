@@ -808,6 +808,11 @@
     </style>
 </head>
 <body>
+       <%- include('partials/sidenav', { 
+        subjects: subjects, 
+        studentClassdata: studentClassdata,
+        terminals: terminals 
+    }) %>
     <div class="loader">
         <script src="https://cdn.lordicon.com/lordicon.js"></script>
         <lord-icon
