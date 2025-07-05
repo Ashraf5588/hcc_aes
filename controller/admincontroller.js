@@ -407,25 +407,56 @@ exports.addSubject = async (req, res, next) => {  try {
       const {rootDir} = require("../utils/path");
   
       console.log("Processing uploaded file:", req.file);
-       docxConverter(`${rootDir}/uploads/${req.file.filename}`,`${rootDir}/uploads/${req.file.filename.replace('.docx', '.pdf')}`,function(err,result){
-  if(err){
-    console.log("Error converting docx to pdf:", err);
-  } else {
-    console.log("Successfully converted docx to pdf");
-  }
-  fs.unlink(`${rootDir}/uploads/${req.file.filename.replace('.pdf', '.docx')}`, (err) => {
-    if (err) {
-      console.error(`Error deleting temporary docx file: ${err.message}`);
-    } else {
-      console.log(`Temporary docx file deleted successfully: ${req.file.filename}`);
-    }
-  });
-});
-
-      // Convert filename to PDF if it was a DOCX file
-      const finalFileName = req.file.filename.replace('.docx', '.pdf');
-      processedData.questionPaperOfClass = finalFileName;
-      console.log(`NEW FILE SET: ${finalFileName}`);
+      
+      // Check if the file is a DOCX file that needs conversion
+      if (req.file.filename.endsWith('.docx')) {
+        try {
+          // Use Promise wrapper for better error handling
+          await new Promise((resolve, reject) => {
+            const inputPath = `${rootDir}/uploads/${req.file.filename}`;
+            const outputPath = `${rootDir}/uploads/${req.file.filename.replace('.docx', '.pdf')}`;
+            
+            console.log(`Converting DOCX to PDF: ${inputPath} -> ${outputPath}`);
+            
+            docxConverter(inputPath, outputPath, function(err, result) {
+              if (err) {
+                console.error("Error converting docx to pdf:", err);
+                reject(err);
+              } else {
+                console.log("Successfully converted docx to pdf");
+                
+                // Delete the temporary DOCX file after successful conversion
+                fs.unlink(inputPath, (unlinkErr) => {
+                  if (unlinkErr) {
+                    console.error(`Error deleting temporary docx file: ${unlinkErr.message}`);
+                  } else {
+                    console.log(`Temporary docx file deleted successfully: ${req.file.filename}`);
+                  }
+                });
+                
+                resolve(result);
+              }
+            });
+          });
+          
+          // Convert filename to PDF
+          const finalFileName = req.file.filename.replace('.docx', '.pdf');
+          processedData.questionPaperOfClass = finalFileName;
+          console.log(`NEW FILE SET: ${finalFileName}`);
+          
+        } catch (conversionError) {
+          console.error("DOCX conversion failed:", conversionError);
+          
+          // If conversion fails, keep the original DOCX file
+          processedData.questionPaperOfClass = req.file.filename;
+          console.log(`CONVERSION FAILED - KEEPING ORIGINAL FILE: ${req.file.filename}`);
+        }
+      } else {
+        // For non-DOCX files (PDF, etc.), use as-is
+        processedData.questionPaperOfClass = req.file.filename;
+        console.log(`NON-DOCX FILE - USING AS-IS: ${req.file.filename}`);
+      }
+      
       console.log("processedData.questionPaperOfClass =", processedData.questionPaperOfClass);
     } else if (formData.currentQuestionPaper) {
       // Editing mode: Keep existing file (could be default.pdf or a specific file)
@@ -493,11 +524,19 @@ exports.addSubject = async (req, res, next) => {  try {
             const {rootDir} = require("../utils/path");
             const oldFilePath = `${rootDir}/uploads/${oldSubject.questionPaperOfClass}`;
             
-            fs.unlink(oldFilePath, (err) => {
-              if (err) {
-                console.error(`Error deleting old file: ${err.message}`);
+            // Check if file exists before trying to delete it
+            fs.access(oldFilePath, fs.constants.F_OK, (accessErr) => {
+              if (accessErr) {
+                console.log(`Old file not found (already deleted or moved): ${oldSubject.questionPaperOfClass}`);
               } else {
-                console.log(`✅ Old file deleted successfully: ${oldSubject.questionPaperOfClass}`);
+                // File exists, proceed with deletion
+                fs.unlink(oldFilePath, (unlinkErr) => {
+                  if (unlinkErr) {
+                    console.error(`Error deleting old file: ${unlinkErr.message}`);
+                  } else {
+                    console.log(`✅ Old file deleted successfully: ${oldSubject.questionPaperOfClass}`);
+                  }
+                });
               }
             });
           } catch (error) {
