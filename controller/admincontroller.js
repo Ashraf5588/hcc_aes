@@ -1027,3 +1027,78 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
   res.status(500).send("Error processing student records: " + err.message);
 }
 }
+
+exports.viewFile = async (req, res, next) => {
+  try {
+    const { filename } = req.params;
+    const { rootDir } = require("../utils/path");
+    const filePath = path.join(rootDir, 'uploads', filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('File not found');
+    }
+    
+    // Get file extension to determine content type
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = 'application/octet-stream';
+    let disposition = 'inline'; // Display in browser instead of download
+    
+    // Set appropriate content types for different file formats
+    switch (ext) {
+      case '.pdf':
+        contentType = 'application/pdf';
+        break;
+      case '.doc':
+        contentType = 'application/msword';
+        disposition = 'attachment'; // Word docs should be downloaded
+        break;
+      case '.docx':
+        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        disposition = 'attachment'; // Word docs should be downloaded
+        break;
+      case '.txt':
+        contentType = 'text/plain';
+        break;
+      case '.jpg':
+      case '.jpeg':
+        contentType = 'image/jpeg';
+        break;
+      case '.png':
+        contentType = 'image/png';
+        break;
+      case '.gif':
+        contentType = 'image/gif';
+        break;
+      default:
+        contentType = 'application/octet-stream';
+        break;
+    }
+    
+    // Set headers for inline display (viewable in browser)
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+    
+    // For PDFs and images, set additional headers for better browser display
+    if (ext === '.pdf' || ext.startsWith('.image')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    
+    // Stream the file to the response
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+    fileStream.on('error', (error) => {
+      console.error('Error streaming file:', error);
+      if (!res.headersSent) {
+        res.status(500).send('Error displaying file');
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in viewFile:', error);
+    res.status(500).send('Error displaying file');
+  }
+};
