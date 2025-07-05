@@ -473,7 +473,7 @@ exports.addSubject = async (req, res, next) => {  try {
     if (subId) {
       // Edit mode
       console.log("Edit mode - updating subject");
-      const oldm = await subject.findById(subId);
+      const oldSubject = await subject.findById(subId);
       if (!oldSubject) {
         return res.status(404).send("Subject not found");
       }
