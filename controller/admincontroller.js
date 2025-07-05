@@ -976,15 +976,23 @@ exports.cross_sheet = async (req, res, next) => {
   });
 };
 exports.studentrecord = async (req, res, next) => {
+  try {
+    const year = new Date();
+    const nepaliYear = bs.ADToBS(`${year}`);
+    console.log(nepaliYear);
 
-const year = new Date();
-const nepaliYear = bs.ADToBS(`${year}`)
-console.log(nepaliYear)
+    // Get sidenav data
+    const sidenavData = await getSidenavData();
 
- res.render("admin/schoolstudentrecord", {
-    editing: false,
-    nepaliYear,
-  });
+    res.render("admin/schoolstudentrecord", {
+      editing: false,
+      nepaliYear,
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in studentrecord:", err);
+    res.status(500).send("Error loading student record page: " + err.message);
+  }
 };
 exports.studentrecordpost = async (req, res, next) => {
 try
@@ -1034,15 +1042,40 @@ exports.viewFile = async (req, res, next) => {
     const { rootDir } = require("../utils/path");
     const filePath = path.join(rootDir, 'uploads', filename);
     
+    console.log(`🔍 ViewFile Request: ${filename}`);
+    console.log(`📁 Root Directory: ${rootDir}`);
+    console.log(`📄 Full File Path: ${filePath}`);
+    
     // Check if file exists
     if (!fs.existsSync(filePath)) {
+      console.error(`❌ File not found: ${filePath}`);
+      
+      // List all files in uploads directory for debugging
+      try {
+        const uploadsDir = path.join(rootDir, 'uploads');
+        const files = fs.readdirSync(uploadsDir);
+        console.log(`📂 Available files in uploads directory:`, files);
+      } catch (dirError) {
+        console.error(`❌ Error reading uploads directory:`, dirError);
+      }
+      
       return res.status(404).send('File not found');
     }
+    
+    // Get file stats for debugging
+    const stats = fs.statSync(filePath);
+    console.log(`📊 File stats:`, {
+      size: stats.size,
+      isFile: stats.isFile(),
+      created: stats.birthtime,
+      modified: stats.mtime
+    });
     
     // Get file extension to determine content type
     const ext = path.extname(filename).toLowerCase();
     let contentType = 'application/octet-stream';
-    let disposition = 'inline'; // Display in browser instead of download
+    
+    console.log(`🎯 File extension: ${ext}`);
     
     // Set appropriate content types for different file formats
     switch (ext) {
@@ -1051,11 +1084,9 @@ exports.viewFile = async (req, res, next) => {
         break;
       case '.doc':
         contentType = 'application/msword';
-        disposition = 'attachment'; // Word docs should be downloaded
         break;
       case '.docx':
         contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        disposition = 'attachment'; // Word docs should be downloaded
         break;
       case '.txt':
         contentType = 'text/plain';
@@ -1075,30 +1106,138 @@ exports.viewFile = async (req, res, next) => {
         break;
     }
     
-    // Set headers for inline display (viewable in browser)
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+    console.log(`📋 Content-Type: ${contentType}`);
     
-    // For PDFs and images, set additional headers for better browser display
-    if (ext === '.pdf' || ext.startsWith('.image')) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
+    // CRITICAL FIX: Set headers to force inline display
+    res.setHeader('Content-Type', contentType);
+    
+    // Only set Content-Disposition for Word docs (force download)
+    // For PDFs and images, don't set Content-Disposition at all to allow inline viewing
+    if (ext === '.doc' || ext === '.docx') {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      console.log(`📥 Disposition: attachment (Word document)`);
+    } else {
+      // For PDFs, images, and other viewable files - NO Content-Disposition header
+      console.log(`👁️ No disposition header - allowing inline display`);
     }
+    
+    res.setHeader('Content-Length', stats.size);
+    
+    // Add CORS headers for VM environments
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // For PDFs and images, set cache headers for better browser display
+    if (ext === '.pdf' || ['.jpg', '.jpeg', '.png', '.gif'].includes(ext)) {
+      res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes cache
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    }
+    
+    // Additional PDF-specific headers to ensure inline display
+    if (ext === '.pdf') {
+      res.setHeader('Accept-Ranges', 'bytes');
+      console.log(`📄 PDF-specific headers set for inline display`);
+    }
+    
+    console.log(`🚀 Starting file stream for: ${filename}`);
+    console.log(`🔧 Headers set:`, {
+      'Content-Type': contentType,
+      'Content-Length': stats.size,
+      'Has-Disposition': (ext === '.doc' || ext === '.docx') ? 'Yes (attachment)' : 'No (inline)'
+    });
     
     // Stream the file to the response
     const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    
+    fileStream.on('open', () => {
+      console.log(`✅ File stream opened successfully for: ${filename}`);
+    });
     
     fileStream.on('error', (error) => {
-      console.error('Error streaming file:', error);
+      console.error(`❌ Error streaming file ${filename}:`, error);
       if (!res.headersSent) {
         res.status(500).send('Error displaying file');
       }
     });
     
+    fileStream.on('end', () => {
+      console.log(`✅ File stream completed for: ${filename}`);
+    });
+    
+    fileStream.pipe(res);
+    
   } catch (error) {
-    console.error('Error in viewFile:', error);
+    console.error('❌ Error in viewFile:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).send('Error displaying file');
+  }
+};
+
+// Diagnostic function for VM deployment issues
+exports.diagnostics = async (req, res, next) => {
+  try {
+    const { rootDir } = require("../utils/path");
+    const uploadsDir = path.join(rootDir, 'uploads');
+    
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      environment: {
+        platform: process.platform,
+        nodeVersion: process.version,
+        cwd: process.cwd(),
+        rootDir: rootDir
+      },
+      uploads: {
+        directory: uploadsDir,
+        exists: fs.existsSync(uploadsDir),
+        permissions: null,
+        files: []
+      }
+    };
+    
+    // Check uploads directory
+    try {
+      if (fs.existsSync(uploadsDir)) {
+        const stats = fs.statSync(uploadsDir);
+        diagnostics.uploads.permissions = {
+          isDirectory: stats.isDirectory(),
+          mode: stats.mode.toString(8),
+          uid: stats.uid,
+          gid: stats.gid
+        };
+        
+        // List all files
+        const files = fs.readdirSync(uploadsDir);
+        diagnostics.uploads.files = files.map(file => {
+          const filePath = path.join(uploadsDir, file);
+          const fileStats = fs.statSync(filePath);
+          return {
+            name: file,
+            size: fileStats.size,
+            created: fileStats.birthtime,
+            modified: fileStats.mtime,
+            isFile: fileStats.isFile(),
+            permissions: fileStats.mode.toString(8)
+          };
+        });
+      }
+    } catch (error) {
+      diagnostics.uploads.error = error.message;
+    }
+    
+    // Check if we're in a development or production environment
+    diagnostics.environment.isDevelopment = process.env.NODE_ENV !== 'production';
+    diagnostics.environment.port = process.env.PORT || 'not set';
+    
+    res.json(diagnostics);
+    
+  } catch (error) {
+    console.error('Error in diagnostics:', error);
+    res.status(500).json({
+      error: 'Diagnostics failed',
+      message: error.message,
+      stack: error.stack
+    });
   }
 };

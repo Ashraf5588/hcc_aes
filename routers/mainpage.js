@@ -150,4 +150,7 @@ student.post('/studentrecord',upload.single('studentRecords'),authenticateToken,
 // Route to view/display uploaded files in browser
 student.get('/view-file/:filename', authenticateToken, admincontrol.viewFile)
 
+// Diagnostic route for VM deployment issues
+student.get('/admin/diagnostics', authenticateToken, admincontrol.diagnostics)
+
 module.exports = student;
