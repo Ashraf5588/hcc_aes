@@ -24,7 +24,7 @@ const upload = multer({ storage: storage })
 
 
 const {authenticateToken} = require('../middleware/loginmiddleware')
-const {authenticateTokenTeacher} = require('../middleware/loginmiddleware')
+
 const {authenticateTokenStudent} = require('../middleware/loginmiddleware')
 const admincontrol = require('../controller/admincontroller')
 
@@ -62,24 +62,24 @@ student.get('/delete/class/:classId',authenticateToken,admincontrol.deleteStuden
 student.get('/admin/editsub/:subId/:editing?',authenticateToken,admincontrol.editSub)
 student.get('/admin/editclass/:classId/:editing?',authenticateToken,admincontrol.editClass)
 // Route for editing a student
-student.get('/edit-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenTeacher, controller.editStudent);
+student.get('/edit-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenStudent, controller.editStudent);
 
 // Route for updating a student
-student.post('/update-student/:studentId', authenticateTokenTeacher,controller.updateStudent);
+student.post('/update-student/:studentId', authenticateTokenStudent,controller.updateStudent);
 
 // Route for deleting a student
-student.get('/delete-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenTeacher, controller.deleteStudent);
+student.get('/delete-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenStudent, controller.deleteStudent);
 student.get('/crossheet',authenticateToken,admincontrol.cross_sheet)
-student.get('/teacher/:controller?',authenticateTokenTeacher,controller.teacherPage)
-student.get('/teacher/:subject/:controller',authenticateTokenTeacher,controller.studentclass)
+student.get('/teacher/:controller?',authenticateTokenStudent,controller.teacherPage)
+student.get('/teacher/:subject/:controller',authenticateTokenStudent,controller.studentclass)
 
-student.get('/findData/:subjectinput/:studentClass/:section/:terminal',authenticateTokenTeacher,controller.findData)
-student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:status',authenticateTokenTeacher,controller.termwisestatus)
-student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status',authenticateTokenTeacher,controller.termwisedata)
-student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status/:qno/:terminal',authenticateTokenTeacher,controller.termdetail)
+student.get('/findData/:subjectinput/:studentClass/:section/:terminal',authenticateTokenStudent,controller.findData)
+student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:status',authenticateTokenStudent,controller.termwisestatus)
+student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status',authenticateTokenStudent,controller.termwisedata)
+student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status/:qno/:terminal',authenticateTokenStudent,controller.termdetail)
 
 student.get('/student_data/:subjectinput/:studentClass/:section/:terminal', authenticateTokenStudent, controller.studentrecord)
-student.post('/search/:subject/:studentClass/:section/:terminal',authenticateTokenTeacher,controller.search)
+student.post('/search/:subject/:studentClass/:section/:terminal',authenticateTokenStudent,controller.search)
 student.get('/:controller/:subject',authenticateTokenStudent,controller.studentclass)
 student.get('/:controller/:subject/:studentClass/:section',authenticateTokenStudent,controller.terminal)
 student.get('/forms/:subjectinput/:studentClass/:section/:terminal?',authenticateTokenStudent,controller.showForm)

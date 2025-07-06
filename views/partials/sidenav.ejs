@@ -137,6 +137,29 @@
       padding-left: 2rem;
     }
 
+    .nav-link.active {
+      background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+    }
+
+    .nav-link.active:hover {
+      background: linear-gradient(45deg, var(--primary-dark), var(--primary));
+      padding-left: 1.5rem;
+    }
+
+    .nav-link.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 4px;
+      background: white;
+      border-radius: 0 4px 4px 0;
+    }
+
     .nav-link.has-submenu::after {
       content: '\f107';
       font-family: 'Font Awesome 6 Free';
@@ -193,6 +216,17 @@
       color: var(--primary);
     }
 
+    .submenu .nav-link.active {
+      background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+      color: white;
+      font-weight: 600;
+      padding-left: 3rem;
+    }
+
+    .submenu .nav-link.active:hover {
+      padding-left: 3rem;
+    }
+
     .subject-submenu {
       background: rgba(0, 0, 0, 0.3);
     }
@@ -205,6 +239,17 @@
     .subject-submenu .nav-link {
       padding-left: 4rem;
       font-size: 0.8rem;
+    }
+
+    .subject-submenu .nav-link.active {
+      background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+      color: white;
+      font-weight: 600;
+      padding-left: 4rem;
+    }
+
+    .subject-submenu .nav-link.active:hover {
+      padding-left: 4rem;
     }
 
     .class-submenu {
@@ -500,31 +545,7 @@ add_circle
       </div>
 
       <!-- Student Records -->
-      <div class="nav-item">
-        <button class="nav-link has-submenu" data-submenu="student-records">
-          <i class="fas fa-user-graduate"></i>
-          Student Records
-        </button>
-        <div class="submenu" id="student-records">
-          <a href="/admin/students" class="nav-link">
-            <i class="fas fa-list"></i>
-            View All Students
-          </a>
-          <a href="/admin/student/add" class="nav-link">
-            <i class="fas fa-user-plus"></i>
-            Add New Student
-          </a>
-          <a href="/admin/student/search" class="nav-link">
-            <i class="fas fa-search"></i>
-            Search Students
-          </a>
-          <a href="/admin/student/bulk" class="nav-link">
-            <i class="fas fa-upload"></i>
-            Bulk Import
-          </a>
-        </div>
-      </div>
-    </div>
+    
     <!-- Admin Section -->
     <div class="nav-section">
       <div class="section-title">
@@ -748,6 +769,92 @@ add_circle
         overlay.classList.remove('active');
       }
     });
+
+    // Set active link based on current page URL
+    function setActiveLink() {
+      const currentPath = window.location.pathname;
+      const currentUrl = window.location.href;
+      
+      // Remove active class from all nav links
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+      });
+      
+      // Find and set active link
+      document.querySelectorAll('.nav-link[href]').forEach(link => {
+        const linkHref = link.getAttribute('href');
+        
+        // Check for exact match first
+        if (linkHref === currentPath) {
+          link.classList.add('active');
+        }
+        // Check for partial match for admin routes
+        else if (currentPath.includes('/admin/') && linkHref.includes('/admin/')) {
+          if (currentPath.includes('term') && linkHref.includes('term')) {
+            link.classList.add('active');
+          }
+          else if (currentPath.includes('subject') && linkHref.includes('subject')) {
+            link.classList.add('active');
+          }
+          else if (currentPath.includes('class') && linkHref.includes('class')) {
+            link.classList.add('active');
+          }
+          else if (currentPath.includes('terminal') && linkHref.includes('terminal')) {
+            link.classList.add('active');
+          }
+          else if (currentPath.includes('login') && linkHref.includes('login')) {
+            link.classList.add('active');
+          }
+        }
+        // Check for teacher routes
+        else if (currentPath.includes('/teacher/') && linkHref.includes('/teacher/')) {
+          link.classList.add('active');
+        }
+        // Check for student routes
+        else if (currentPath.includes('/student/') && linkHref.includes('/student/')) {
+          link.classList.add('active');
+        }
+        // Check for forms routes
+        else if (currentPath.includes('/forms/') && linkHref.includes('/forms/')) {
+          link.classList.add('active');
+        }
+        // Check for crossheet
+        else if (currentPath.includes('crossheet') && linkHref.includes('crossheet')) {
+          link.classList.add('active');
+        }
+        // Check for findData routes
+        else if (currentPath.includes('/findData/') && linkHref.includes('/findData/')) {
+          link.classList.add('active');
+        }
+        // Check for studentData routes
+        else if (currentPath.includes('/studentData/') && linkHref.includes('/studentData/')) {
+          link.classList.add('active');
+        }
+        // Check for home page
+        else if (currentPath === '/' && linkHref === '/') {
+          link.classList.add('active');
+        }
+      });
+      
+      // Auto-expand submenu if it contains active link
+      document.querySelectorAll('.nav-link.active').forEach(activeLink => {
+        let parent = activeLink.closest('.submenu');
+        while (parent) {
+          parent.classList.add('expanded');
+          const parentButton = parent.previousElementSibling;
+          if (parentButton && parentButton.classList.contains('has-submenu')) {
+            parentButton.classList.add('expanded');
+          }
+          parent = parent.parentElement.closest('.submenu');
+        }
+      });
+    }
+
+    // Set active link on page load
+    document.addEventListener('DOMContentLoaded', setActiveLink);
+    
+    // Update active link when navigating (for SPAs)
+    window.addEventListener('popstate', setActiveLink);
   </script>
 </body>
 </html>
