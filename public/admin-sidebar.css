@@ -374,6 +374,8 @@ body {
 @media (max-width: 992px) {
   .admin-sidebar {
     transform: translateX(-100%);
+    top: 60px; /* Account for fixed navbar */
+    height: calc(100vh - 60px);
   }
   
   .sidebar-open .admin-sidebar {
@@ -382,6 +384,11 @@ body {
   
   .admin-main {
     margin-left: 0;
+    padding-top: 60px; /* Account for fixed navbar */
+  }
+  
+  .admin-topbar {
+    display: none; /* Hide since we have the main navbar */
   }
   
   .admin-topbar .toggle-sidebar {
@@ -391,12 +398,28 @@ body {
   .sidebar-open .admin-main::before {
     content: '';
     position: fixed;
-    top: 0;
+    top: 60px; /* Start below the navbar */
     left: 0;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 60px);
     background-color: rgba(0,0,0,0.5);
     z-index: 999;
+  }
+}
+
+@media (max-width: 576px) {
+  .admin-sidebar {
+    top: 55px; /* Account for smaller navbar */
+    height: calc(100vh - 55px);
+  }
+  
+  .admin-main {
+    padding-top: 55px; /* Account for smaller navbar */
+  }
+  
+  .sidebar-open .admin-main::before {
+    top: 55px; /* Start below the smaller navbar */
+    height: calc(100% - 55px);
   }
 }
 

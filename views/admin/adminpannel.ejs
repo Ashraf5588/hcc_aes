@@ -423,19 +423,20 @@
       transform: scale(1.05);
     }
     a{
-      text-decoration: none;
+      text-decoration: none !important;
+
     }
   </style>
 </head>
 
 <body>
-  <%- include('../partials/nav',{currentPage:'admin'}) %>
+  <%- include('../partials/nav',{currentPage:'admin'}) %> <br><br><br>
 
  <%- include('../partials/sidenav', { 
      subjects: subjects, 
      studentClassdata: studentClassdata,
      terminals: terminals 
- }) %>
+ }) %> 
 
  <a href="/crossheet"><button style="float: right;background-color: #0ea5e9;border-radius: 5px;border: none;color: white;margin: 1%;"><i class="fa-solid fa-gears" style="color: #ffffff;"></i><center>Generate Markslip</center></button></a> 
 

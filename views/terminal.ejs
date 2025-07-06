@@ -67,7 +67,7 @@
       display: block;
       margin-top: 0.5rem;
     }
-      .terminalcontainer {
+    .terminalcontainer {
       max-width: 1200px;
       margin: 0 auto 2rem;
       padding: 0 1rem;
@@ -78,6 +78,7 @@
       border-radius: 12px;
       overflow: hidden;
       border-bottom: 3px solid var(--primary) !important;
+      height: 100%;
     }
     
     .terminal-card:hover {
@@ -95,6 +96,136 @@
       border-radius: 50%;
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: white;
+    }
+    
+    /* Mobile responsive design */
+    @media (max-width: 768px) {
+      .terminalcontainer {
+        padding: 0 0.5rem;
+      }
+      
+      .mobile-terminal-row {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .mobile-terminal-item {
+        flex: 1;
+        min-width: 90px;
+        max-width: 110px;
+        text-align: center;
+      }
+      
+      .mobile-terminal-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1rem 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: none;
+        transition: all 0.3s ease;
+        height: auto;
+        min-height: 110px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .mobile-terminal-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(to right, var(--primary), var(--secondary));
+      }
+      
+      .mobile-terminal-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      }
+      
+      .mobile-terminal-card:active {
+        transform: translateY(-1px);
+        transition: all 0.1s ease;
+      }
+      
+      .mobile-terminal-icon {
+        height: 45px;
+        width: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5rem;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        font-size: 1.3rem;
+        box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+      }
+      
+      .mobile-terminal-title {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--dark);
+        text-align: center;
+        margin: 0;
+        line-height: 1.1;
+        text-transform: uppercase;
+      }
+      
+      .desktop-terminal-grid {
+        display: none;
+      }
+      
+      /* Hero section adjustments for mobile */
+      #firstheading {
+        font-size: 2rem;
+      }
+      
+      .subheading {
+        font-size: 1rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .mobile-terminal-item {
+        min-width: 80px;
+        max-width: 95px;
+      }
+      
+      .mobile-terminal-card {
+        min-height: 100px;
+        padding: 0.8rem 0.3rem;
+      }
+      
+      .mobile-terminal-icon {
+        height: 40px;
+        width: 40px;
+        font-size: 1.1rem;
+      }
+      
+      .mobile-terminal-title {
+        font-size: 0.65rem;
+      }
+      
+      #firstheading {
+        font-size: 1.8rem;
+      }
+    }
+    
+    @media (min-width: 769px) {
+      .mobile-terminal-container {
+        display: none;
+      }
     }
     
     .custom-terminal .terminal-icon {
@@ -142,49 +273,46 @@
   }) %>
 
   <div class="terminalcontainer">
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-
-      <% terminalList.forEach((terminal)=>{%>
-      
-      <div class="col">
-        <a href="<%=section %>/<%= terminal.terminal.toUpperCase() %>" class="text-decoration-none">
-          <div class="card h-100 border-0 shadow-sm terminal-card">
-            <div class="card-body text-center p-4">
-              <div class="terminal-icon mb-3">
-                <i class="fa-solid fa-calendar-check fa-3x"></i>
+    <!-- Desktop Layout -->
+    <div class="desktop-terminal-grid">
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <% terminalList.forEach((terminal)=>{%>
+        <div class="col">
+          <a href="<%=section %>/<%= terminal.terminal.toUpperCase() %>" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm terminal-card">
+              <div class="card-body text-center p-4">
+                <div class="terminal-icon mb-3">
+                  <i class="fa-solid fa-calendar-check fa-3x"></i>
+                </div>
+                <h3 class="card-title"><%= terminal.terminal.toUpperCase() %> TERMINAL </h3>
+                <p class="card-text text-muted"><%= terminal.terminal.toUpperCase() %> TERMINAL examination results and analysis</p>
               </div>
-              <h3 class="card-title"><%= terminal.terminal.toUpperCase() %> TERMINAL </h3>
-              <p class="card-text text-muted"><%= terminal.terminal.toUpperCase() %> TERMINAL examination results and analysis</p>
+              <div class="card-footer bg-transparent border-0 text-center p-3">
+                <span class="btn btn-sm btn-primary">Select <i class="fas fa-arrow-right ms-1"></i></span>
+              </div>
             </div>
-            <div class="card-footer bg-transparent border-0 text-center p-3">
-              <span class="btn btn-sm btn-primary">Select <i class="fas fa-arrow-right ms-1"></i></span>
-            </div>
-          </div>
-        </a>
+          </a>
+        </div>
+        <%})%>
       </div>
-      <%})%>
-      
-     
-      
-     
-     
-      
-      <!-- <div class="col" style="display:<%= controller==='forms'?'none':'block'%>">
-        <a href="<%=section %>/termwise/status" class="text-decoration-none">
-          <div class="card h-100 border-0 shadow-sm terminal-card compare-terminal">
-            <div class="card-body text-center p-4">
-              <div class="terminal-icon mb-3">
-                <i class="fa-solid fa-chart-line fa-3x"></i>
+    </div>
+
+    <!-- Mobile Layout -->
+    <div class="mobile-terminal-container">
+      <div class="mobile-terminal-row">
+        <% terminalList.forEach((terminal)=>{%>
+        <div class="mobile-terminal-item">
+          <a href="<%=section %>/<%= terminal.terminal.toUpperCase() %>" class="text-decoration-none">
+            <div class="mobile-terminal-card">
+              <div class="mobile-terminal-icon">
+                <i class="fa-solid fa-calendar-check"></i>
               </div>
-              <h3 class="card-title">Compare Terminals</h3>
-              <p class="card-text text-muted">Compare results across different terminal periods</p>
+              <h4 class="mobile-terminal-title"><%= terminal.terminal.toUpperCase() %><br>TERMINAL</h4>
             </div>
-            <div class="card-footer bg-transparent border-0 text-center p-3">
-              <span class="btn btn-sm btn-secondary">Compare <i class="fas fa-chart-bar ms-1"></i></span>
-            </div>
-          </div>
-        </a> -->
-      </div> 
+          </a>
+        </div>
+        <%})%>
+      </div>
     </div>
   </div>
 

@@ -13,6 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Navigation CSS -->
+  <link rel="stylesheet" href="/nav.css">
   
   <style>
     :root {
@@ -375,6 +377,14 @@
   </style>
 </head>
 <body>
+  <%- include('../partials/nav',{currentPage:'admin'}) %>
+  
+  <%- include('../partials/sidenav', { 
+      subjects: subjects || [], 
+      studentClassdata: studentClassdata || [],
+      terminals: terminals || [] 
+  }) %>
+  
   <div class="admin-container zoomable-content zoom-transition">
     <div class="container">
       <!-- Header -->

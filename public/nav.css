@@ -21,29 +21,57 @@
   font-family: 'Lexend', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+body {
+  padding-top: 70px; /* Account for fixed navbar */
+}
+
+/* Ensure admin pages with sidebar have proper spacing */
+body.has-sidebar {
+  padding-top: 70px;
+}
+
+body.has-sidebar .admin-main {
+  padding-top: 0; /* Remove duplicate padding from admin-main */
+}
+
 .horizontal-navbar {
   background: var(--nav-bg);
   box-shadow: var(--shadow-md);
-  position: relative;
-  z-index: 1000;
+  
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001;
   width: 100%;
   height: 70px;
   display: flex;
   align-items: center;
-
 }
 
 .navbar-container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 0 2rem;
   width: 100%;
   max-width: 1400px;
-  margin: 0 0 0 20%;
+  margin: 0 auto;
   height: 100%;
   color: white;
   position: relative;
+}
+
+/* When sidebar is present, adjust navbar positioning for desktop */
+@media (min-width: 993px) {
+  body.has-sidebar .horizontal-navbar {
+    left: 280px;
+    width: calc(100% - 280px);
+  }
+  
+  body.has-sidebar .navbar-container {
+    justify-content: center;
+    margin: 0;
+  }
 }
 
 .navbar-brand {
@@ -78,77 +106,24 @@
   .navbar-title {
     font-size: 1.2rem;
   }
+  
+  .navbar-logo {
+    width: 45px;
+    height: 45px;
+    margin-right: 12px;
+  }
 }
 
 @media (max-width: 576px) {
   .navbar-title {
     font-size: 0.95rem;
   }
-}
-
-.navbar-toggler {
-  display: none;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 4px;
-  color: white;
-  font-size: 1.2rem;
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.navbar-toggler:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.navbar-toggler-icon::before {
-  content: '';
-  top: -8px;
-}
-
-.navbar-toggler-icon::after {
-  content: '';
-  top: 8px;
-}
-
-.navbar-links {
-  height: 100%;
-}
-
-.horizontal-nav {
-  display: flex;
-  align-items: center;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  height: 100%;
-    gap: 2rem;
-}
-
-.nav-item {
-  height: 100%;
-  position: relative;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--nav-text);
-  text-decoration: none;
-  font-weight: 600;
-  padding: 0 1.5rem;
-  height: 100%;
-  transition: var(--transition);
-  position: relative;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.nav-link i {
-  font-size: 1.2rem;
-  margin-right: 5px;
+  
+  .navbar-logo {
+    width: 35px;
+    height: 35px;
+    margin-right: 8px;
+  }
 }
 
 .nav-link:hover {
@@ -255,81 +230,37 @@
 @media (max-width: 768px) {
   .horizontal-navbar {
     height: 60px;
-    position: relative;
+    left: 0 !important;
+    width: 100% !important;
+  }
+  
+  body.has-sidebar .horizontal-navbar {
+    left: 0 !important;
+    width: 100% !important;
   }
   
   .navbar-container {
-    justify-content: space-between;
+    justify-content: center;
     padding: 0 1rem;
-  }
-  
-  .navbar-brand {
-    margin-right: auto;
+    margin: 0 !important;
   }
   
   .navbar-title {
-    display: block;
     font-size: 1.2rem;
   }
   
-  .navbar-toggler {
-    display: block;
-    margin-left: auto;
-    z-index: 10;
-  }
-  
-  .navbar-links {
-    position: absolute;
-    top: 60px;
-    left: 0;
-    right: 0;
-    width: 100%;
-    background: var(--nav-bg);
-    height: auto;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease;
-    box-shadow: var(--shadow-md);
-    z-index: 1000;
-  }
-  
-  .navbar-links.show {
-    max-height: 300px;
-  }
-  
-  center {
-    width: 100%;
-  }
-  
-  .horizontal-nav {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0.5rem 0;
-    gap: 0;
-    width: 100%;
-  }
-  
-  .nav-item {
-    width: 100%;
-    height: auto;
-    text-align: center;
-  }
-  
-  .nav-link {
-    justify-content: center;
-    padding: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .nav-link.active::after {
-    bottom: 0;
-    height: 3px;
-    width: 80%;
-    left: 10%;
+  .navbar-logo {
+    width: 45px;
+    height: 45px;
+    margin-right: 12px;
   }
 }
 
 @media (max-width: 576px) {  
+  .horizontal-navbar {
+    height: 55px;
+  }
+  
   .navbar-logo {
     width: 35px;
     height: 35px;
@@ -344,22 +275,5 @@
     font-size: 16px;
     height: 3.5rem;
     line-height: 3.5rem;
-  }
-  
-  .nav-link {
-    font-size: 14px;
-    padding: 0.8rem;
-  }
-  
-  .nav-link i {
-    font-size: 1rem;
-  }
-  
-  .horizontal-navbar {
-    height: 55px;
-  }
-  
-  .navbar-links {
-    top: 55px;
   }
 }
