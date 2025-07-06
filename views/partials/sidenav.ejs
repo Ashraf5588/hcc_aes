@@ -43,7 +43,29 @@
       transition: all 0.3s ease;
       z-index: 1000;
       overflow-y: auto;
+      overflow-x: hidden;
       box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary) rgba(255, 255, 255, 0.1);
+    }
+
+    /* Custom scrollbar for the main sidebar */
+    .sidebar::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+      border-radius: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(45deg, var(--primary-dark), var(--primary));
     }
 
     .sidebar.active {
@@ -135,7 +157,29 @@
     }
 
     .submenu.expanded {
-      max-height: 500px;
+      max-height: 60vh; /* Use viewport height for better responsiveness */
+      overflow-y: auto; /* Allow vertical scrolling */
+      scrollbar-width: thin; /* For Firefox */
+      scrollbar-color: var(--primary) rgba(255, 255, 255, 0.1); /* For Firefox */
+    }
+
+    /* Custom scrollbar for webkit browsers */
+    .submenu.expanded::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .submenu.expanded::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    .submenu.expanded::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 3px;
+    }
+
+    .submenu.expanded::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-dark);
     }
 
     .submenu .nav-link {
@@ -153,6 +197,11 @@
       background: rgba(0, 0, 0, 0.3);
     }
 
+    .subject-submenu.expanded {
+      max-height: 50vh; /* Specific height for nested submenus */
+      overflow-y: auto;
+    }
+
     .subject-submenu .nav-link {
       padding-left: 4rem;
       font-size: 0.8rem;
@@ -160,6 +209,11 @@
 
     .class-submenu {
       background: rgba(0, 0, 0, 0.4);
+    }
+
+    .class-submenu.expanded {
+      max-height: 40vh; /* Specific height for deeply nested submenus */
+      overflow-y: auto;
     }
 
     .class-submenu .nav-link {
@@ -472,13 +526,19 @@ add_circle
       </div>
     </div>
     <!-- Admin Section -->
-   <a href="/admin/term/FIRST"> <div class="nav-section">
+    <div class="nav-section">
       <div class="section-title">
         <i class="fas fa-chalkboard-teacher"></i>
         Admin Panel
-      </div></a>
-
-  
+      </div>
+      
+      <div class="nav-item">
+        <a href="/admin/term/FIRST" class="nav-link">
+          <i class="fas fa-tachometer-alt"></i>
+          Admin Dashboard
+        </a>
+      </div>
+    </div>
 
     <!-- Quick Actions -->
     <div class="nav-section">
