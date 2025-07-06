@@ -150,6 +150,46 @@ student.post('/studentrecord',upload.single('studentRecords'),authenticateToken,
 // Route to view/display uploaded files in browser
 student.get('/view-file/:filename', authenticateToken, admincontrol.viewFile)
 
+// Enhanced file viewer routes for better VM compatibility
+student.get('/file-viewer/:filename', authenticateToken, (req, res) => {
+  const filename = req.params.filename;
+  const path = require('path');
+  const fs = require('fs');
+  const rootDir = require('../utils/path').rootDir;
+  const filePath = path.join(rootDir, 'uploads', filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).render('404', { message: 'File not found' });
+  }
+  
+  res.render('file-viewer', { filename: filename });
+});
+
+student.get('/view-pdf/:filename', authenticateToken, (req, res) => {
+  const filename = req.params.filename;
+  const path = require('path');
+  const fs = require('fs');
+  const rootDir = require('../utils/path').rootDir;
+  const filePath = path.join(rootDir, 'uploads', filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('File not found');
+  }
+  
+  // Serve PDF with explicit headers for VM compatibility
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'inline; filename="' + filename + '"');
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  
+  // Send the file
+  res.sendFile(filePath);
+});
+
 // Diagnostic route for VM deployment issues
 student.get('/admin/diagnostics', authenticateToken, admincontrol.diagnostics)
 

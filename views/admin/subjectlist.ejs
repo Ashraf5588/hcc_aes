@@ -497,7 +497,7 @@
           <i class="fas fa-info-circle me-2"></i>
           <strong>Current file:</strong> <%= subjectedit.questionPaperOfClass %>
           <% if (subjectedit.questionPaperOfClass !== 'default.pdf') { %>
-            <a href="/view-file/<%= subjectedit.questionPaperOfClass %>" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+            <a href="/file-viewer/<%= subjectedit.questionPaperOfClass %>" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
               <i class="fas fa-eye"></i> View File
             </a>
           <% } %>
@@ -663,7 +663,7 @@ if (editing === 'true') {
         currentFileAlert.innerHTML = `
           <i class="fas fa-info-circle me-2"></i>
           <strong>Current file:</strong> ${subjectedit.questionPaperOfClass}
-          ${subjectedit.questionPaperOfClass !== 'default.pdf' ? `<a href="/view-file/${subjectedit.questionPaperOfClass}" target="_blank" class="btn btn-sm btn-outline-primary ms-2"><i class="fas fa-eye"></i> View File</a>` : ''}
+          ${subjectedit.questionPaperOfClass !== 'default.pdf' ? `<a href="/file-viewer/${subjectedit.questionPaperOfClass}" target="_blank" class="btn btn-sm btn-outline-primary ms-2"><i class="fas fa-eye"></i> View File</a>` : ''}
           <br>
           <small class="text-muted">Select a new file above to replace the current question paper, or leave empty to keep the existing file.</small>
         `;
@@ -827,7 +827,7 @@ if (editing === 'true') {
             <% }); %>
             <td>
               <% if (sub.questionPaperOfClass && sub.questionPaperOfClass !== 'default.pdf') { %>
-                <a href="/view-file/<%= sub.questionPaperOfClass %>" target="_blank" class="btn btn-outline-info btn-sm">
+                <a href="/file-viewer/<%= sub.questionPaperOfClass %>" target="_blank" class="btn btn-outline-info btn-sm">
                   <i class="fas fa-eye"></i> View
                 </a>
               <% } else { %>
