@@ -3,11 +3,20 @@ const express = require('express');
 const student  = require('./routers/mainpage');
 
 const app = express();
+
+
 const connection = require('./config/connection')
 // Serve static files from 'uploads' folder
-app.use('/uploads', express.static(__dirname + '/uploads'));
+// app.use('/uploads', express.static(__dirname + '/uploads'));
 const path = require('path')
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, filePath) => {
+    // Ensure PDFs are served inline, not as attachments
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Disposition', 'inline');
+    }
+  }
+}))
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 
