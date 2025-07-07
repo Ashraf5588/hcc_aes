@@ -30,19 +30,55 @@
     <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.colVis.min.js"></script>
 
     <script>
+    // Define custom sorting for question numbers BEFORE document ready
+    $.fn.dataTable.ext.type.detect.unshift(function (data) {
+        if (typeof data === 'string' && data.match(/^q?\d+[a-z]?$/i)) {
+            return 'question-num';
+        }
+        return null;
+    });
+
+    $.fn.dataTable.ext.type.order['question-num-pre'] = function (data) {
+        if (!data || data === '') return 0;
+        
+        // Extract question number and sub-question from strings like "q1a", "q1b", "q10c"
+        var match = data.match(/^q?(\d+)([a-z]?)$/i);
+        if (!match) return 0;
+        
+        var questionNum = parseInt(match[1]);
+        var subQuestion = match[2] ? match[2].toLowerCase() : 'a';
+        
+        // Convert sub-question letter to number (a=0, b=1, c=2, etc.)
+        var subQuestionNum = subQuestion.charCodeAt(0) - 97;
+        
+        // Return a sortable number: questionNum * 100 + subQuestionNum
+        // This ensures q1a=100, q1b=101, q2a=200, q10a=1000, etc.
+        return questionNum * 100 + subQuestionNum;
+    };
+
     $(document).ready(function () {
         var persons = <%- JSON.stringify(results || []) %>; // Directly pass results array from EJS
         var classInfo = "<%= terminal %> Terminal Examination\n" +
                     "Class: <%= studentClass %> (<%= section %>)\n" +
                     "Subject: <%= subjectname %>";
+        
+        // Sort the persons array by question number before passing to DataTable
+        persons.sort(function(a, b) {
+            var aVal = $.fn.dataTable.ext.type.order['question-num-pre'](a.questionNo);
+            var bVal = $.fn.dataTable.ext.type.order['question-num-pre'](b.questionNo);
+            return aVal - bVal;
+        });
                     
         $("#example").DataTable({
             data: persons,
             responsive: true,
             columns: [
-                { data: "questionNo", title: "Question No" },
+                { 
+                    data: "questionNo", 
+                    title: "Question No",
+                    type: "question-num"
+                },
                 { data: "correct", title: "Correct" },
-
                 { data: "wrong", title: "Wrong" },
                 { data: null, title: "Current",defaultContent: "" },
                 { data: "fifty", title: "50% Correct" },
@@ -73,7 +109,13 @@
                  "<'row'<'col-sm-12'tr>>" +
                  "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>" +
                  "<'row'<'col-sm-12'B>>",
-            order: [[2, 'desc']], // Sort by Wrong column (index 2) in descending order
+            order: [[0, 'asc']], // Sort by Question No column (index 0) in ascending order
+            columnDefs: [
+                {
+                    targets: 0, // Question No column
+                    type: 'question-num'
+                }
+            ],
             buttons: [
                 {
                     extend: "copy",
@@ -1019,6 +1061,18 @@
                     <div class="card">
                         <div class="card-header py-3" style="background-color: var(--primary); color: white;">
                             <h5 class="mb-0">
+                                <select name="class" id="classSelect">
+                                    <option value="">Select Class</option>
+                                    <% classlistData.forEach(function(classItem) { %>
+                                        <option value="<%= classItem.studentClass %>"><%= classItem.studentClass %></option>
+                                    <% }); %>
+                                </select>
+                                <select name="section" id="sectionSelect">
+                                    <option value="">Select Section</option>
+                                    <% classlistData.forEach(function(sectionItem) { %>
+                                        <option value="<%= sectionItem.section %>"><%= sectionItem.section %></option>
+                                    <% }); %>
+                                </select>
                                 <i class="fas fa-table me-2"></i> Question Analysis Table
                             </h5>
                         </div>

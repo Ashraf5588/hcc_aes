@@ -411,30 +411,54 @@ exports.addSubject = async (req, res, next) => {  try {
       // Check if the file is a DOCX file that needs conversion
       if (req.file.filename.endsWith('.docx')) {
         try {
+          console.log(`🔄 Starting DOCX to PDF conversion for: ${req.file.filename}`);
+          
           // Use Promise wrapper for better error handling
           await new Promise((resolve, reject) => {
             const inputPath = `${rootDir}/uploads/${req.file.filename}`;
             const outputPath = `${rootDir}/uploads/${req.file.filename.replace('.docx', '.pdf')}`;
             
-            console.log(`Converting DOCX to PDF: ${inputPath} -> ${outputPath}`);
+            console.log(`📂 Input path: ${inputPath}`);
+            console.log(`📂 Output path: ${outputPath}`);
+            
+            // Check if input file exists
+            if (!fs.existsSync(inputPath)) {
+              const error = new Error(`Input DOCX file not found: ${inputPath}`);
+              console.error("❌ Input file check failed:", error.message);
+              reject(error);
+              return;
+            }
+            
+            console.log(`✅ Input file exists, size: ${fs.statSync(inputPath).size} bytes`);
+            console.log(`🔄 Converting DOCX to PDF: ${inputPath} -> ${outputPath}`);
             
             docxConverter(inputPath, outputPath, function(err, result) {
               if (err) {
-                console.error("Error converting docx to pdf:", err);
+                console.error("❌ DOCX conversion error:", err);
                 reject(err);
               } else {
-                console.log("Successfully converted docx to pdf");
+                console.log("✅ DOCX conversion successful:", result);
                 
-                // Delete the temporary DOCX file after successful conversion
-                fs.unlink(inputPath, (unlinkErr) => {
-                  if (unlinkErr) {
-                    console.error(`Error deleting temporary docx file: ${unlinkErr.message}`);
-                  } else {
-                    console.log(`Temporary docx file deleted successfully: ${req.file.filename}`);
-                  }
-                });
-                
-                resolve(result);
+                // Verify the PDF was created
+                if (fs.existsSync(outputPath)) {
+                  const pdfSize = fs.statSync(outputPath).size;
+                  console.log(`✅ PDF created successfully, size: ${pdfSize} bytes`);
+                  
+                  // Delete the temporary DOCX file after successful conversion
+                  fs.unlink(inputPath, (unlinkErr) => {
+                    if (unlinkErr) {
+                      console.error(`⚠️ Error deleting temporary docx file: ${unlinkErr.message}`);
+                    } else {
+                      console.log(`🗑️ Temporary docx file deleted successfully: ${req.file.filename}`);
+                    }
+                  });
+                  
+                  resolve(result);
+                } else {
+                  const error = new Error("PDF file was not created despite successful conversion");
+                  console.error("❌ PDF verification failed:", error.message);
+                  reject(error);
+                }
               }
             });
           });
@@ -442,14 +466,16 @@ exports.addSubject = async (req, res, next) => {  try {
           // Convert filename to PDF
           const finalFileName = req.file.filename.replace('.docx', '.pdf');
           processedData.questionPaperOfClass = finalFileName;
-          console.log(`NEW FILE SET: ${finalFileName}`);
+          console.log(`✅ CONVERSION COMPLETE - NEW FILE SET: ${finalFileName}`);
           
         } catch (conversionError) {
-          console.error("DOCX conversion failed:", conversionError);
+          console.error("❌ DOCX conversion failed:", conversionError.message);
+          console.error("❌ Stack trace:", conversionError.stack);
           
-          // If conversion fails, keep the original DOCX file
+          // If conversion fails, keep the original DOCX file but warn about it
           processedData.questionPaperOfClass = req.file.filename;
-          console.log(`CONVERSION FAILED - KEEPING ORIGINAL FILE: ${req.file.filename}`);
+          console.log(`⚠️ CONVERSION FAILED - KEEPING ORIGINAL DOCX FILE: ${req.file.filename}`);
+          console.log(`⚠️ Note: This file will force download instead of inline display`);
         }
       } else {
         // For non-DOCX files (PDF, etc.), use as-is

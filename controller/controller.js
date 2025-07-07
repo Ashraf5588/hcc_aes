@@ -332,6 +332,7 @@ exports.saveForm = async (req, res, next) => {
 
 exports.findData = async (req, res) => {
   try {
+
     const {
       subjectinput,
       studentClass,
@@ -601,26 +602,49 @@ let fileStatus = 'default'; // 'default', 'found', 'missing'
 
 if(paper && paper.questionPaperOfClass && paper.questionPaperOfClass !== '') {
   const requestedFile = paper.questionPaperOfClass;
-  
-  // Check if the file actually exists in uploads folder
   const {rootDir} = require("../utils/path");
-  const filePath = `${rootDir}/uploads/${requestedFile}`;
   
-  try {
-    if (fs.existsSync(filePath)) {
-      file = requestedFile;
+  console.log(`🔍 Looking for question paper: ${requestedFile}`);
+  
+  // If the database has a .docx file, check if it was converted to PDF
+  let actualFilePath = `${rootDir}/uploads/${requestedFile}`;
+  let actualFileName = requestedFile;
+  
+  if (requestedFile.endsWith('.docx')) {
+    const pdfFileName = requestedFile.replace('.docx', '.pdf');
+    const pdfFilePath = `${rootDir}/uploads/${pdfFileName}`;
+    
+    console.log(`📝 Database has DOCX file, checking for converted PDF: ${pdfFileName}`);
+    
+    // Check if PDF version exists (from conversion)
+    if (fs.existsSync(pdfFilePath)) {
+      actualFileName = pdfFileName;
+      actualFilePath = pdfFilePath;
+      fileStatus = 'found';
+      console.log(`✅ Converted PDF found: ${pdfFileName}`);
+    } else if (fs.existsSync(actualFilePath)) {
+      // PDF doesn't exist but DOCX does - conversion might have failed
+      fileStatus = 'found';
+      console.log(`⚠️ Only DOCX file exists (conversion may have failed): ${requestedFile}`);
+    } else {
+      // Neither PDF nor DOCX exists
+      console.log(`❌ Neither PDF nor DOCX file exists for: ${requestedFile}`);
+      actualFileName = 'default.pdf';
+      fileStatus = 'missing';
+    }
+  } else {
+    // For non-DOCX files (direct PDF uploads), check normally
+    if (fs.existsSync(actualFilePath)) {
       fileStatus = 'found';
       console.log(`✅ Question paper found: ${requestedFile}`);
     } else {
       console.log(`⚠️ Question paper file missing: ${requestedFile}, falling back to default.pdf`);
-      file = 'default.pdf';
+      actualFileName = 'default.pdf';
       fileStatus = 'missing';
     }
-  } catch (err) {
-    console.log(`❌ Error checking file existence: ${err.message}, using default.pdf`);
-    file = 'default.pdf';
-    fileStatus = 'missing';
   }
+  
+  file = actualFileName;
 } else {
   console.log(`📝 No question paper specified, using default.pdf`);
   fileStatus = 'default';
@@ -630,7 +654,9 @@ const totalcountmarks = await model.find({ subject: `${subjectinput}`, section: 
       { roll: 1, name: 1 ,totalMarks: 1,_id:1,studentClass:1,section:1,subject:1}).lean();
 module.exports = totalcountmarks;
 
-inCorrect.sort((a, b) => parseInt(b.total) - parseInt(a.total));
+const classList = mongoose.model("studentClass", classSchema, "classlist");
+const classlisttotal = await classList.find({}).lean();
+const classlistData = new Set(classlisttotal.map(item => item.studentClass));
 
     res.render("analysis", {
       results: result,
@@ -639,6 +665,7 @@ inCorrect.sort((a, b) => parseInt(b.total) - parseInt(a.total));
       studentClass,
       section,
       totalStudent,
+classlistData,
       terminal,
       Correct,
       inCorrect,  

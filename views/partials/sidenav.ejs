@@ -493,21 +493,19 @@
       <div class="nav-item">
         <button class="nav-link has-submenu" data-submenu="system-mgmt">
           <i class="fas fa-cogs"></i>
-          Add New Subjects | Classes | Terminals
+          System Management
         </button>
-           <a href="/admin/new/subject" class="nav-link">
-           <span class="material-symbols-outlined">
-add_circle
-</span>Add New Subject
-           
-          </a>
         <div class="submenu" id="system-mgmt">
+          <a href="/admin/new/subject" class="nav-link">
+            <i class="fas fa-plus-circle"></i>
+            Add New Subject
+          </a>
           <a href="/admin/terminal" class="nav-link">
             <i class="fas fa-calendar-plus"></i>
-            Manage Terminals
+            Add Terminal
           </a>
           <a href="/admin/subject" class="nav-link">
-            <i class="fa-solid fa-book-open"></i>
+            <i class="fas fa-book-open"></i>
             Manage Question Format
           </a>
           <a href="/admin/class" class="nav-link">
@@ -521,18 +519,17 @@ add_circle
       <div class="nav-item">
         <button class="nav-link has-submenu" data-submenu="admin-reports">
           <i class="fas fa-chart-pie"></i>
-          Show Entry Details | Marks Slip
+          Reports & Analytics
         </button>
         <div class="submenu" id="admin-reports">
           <a href="/admin/term/FIRST" class="nav-link">
             <i class="fas fa-table"></i>
             Entry Overview
           </a>
-          <a href="/crossheet" class="nav-link">
-            <i class="fas fa-file-excel"></i>
-            Generate Marks Slip
-          </a>
-       
+          <button class="nav-link" onclick="showTerminalSelector('admin-report')">
+            <i class="fas fa-chart-bar"></i>
+            Terminal Analysis
+          </button>
         </div>
       </div>
 
@@ -543,8 +540,29 @@ add_circle
           Question Papers
         </a>
       </div>
+    </div>
 
-      <!-- Student Records -->
+    <!-- Student Records -->
+    <div class="nav-section">
+      <div class="section-title">
+        <i class="fas fa-user-graduate"></i>
+        Student Records
+      </div>
+      
+      <div class="nav-item">
+        <a href="/studentrecord" class="nav-link">
+          <i class="fas fa-file-alt"></i>
+          School Record
+        </a>
+      </div>
+      
+      <div class="nav-item">
+        <a href="/crossheet" class="nav-link">
+          <i class="fas fa-file-excel"></i>
+          Generate Marks Slip
+        </a>
+      </div>
+    </div>
     
     <!-- Admin Section -->
     <div class="nav-section">

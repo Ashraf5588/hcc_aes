@@ -446,6 +446,11 @@
   </style>
 </head>
 <body>
+  <%- include('../partials/sidenav', { 
+      subjects: subjects || [], 
+      studentClassdata: studentClassdata || [],
+      terminals: terminals || [] 
+  }) %>
   
   <div class="main-wrapper">
     <div class="container">

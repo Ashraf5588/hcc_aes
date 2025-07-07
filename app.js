@@ -14,45 +14,42 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     const fileName = path.basename(filePath);
     const req = res.req; // Get the request object
     
-    // Ensure PDFs are served inline with enhanced headers for VM compatibility
+    // Ensure PDFs are ALWAYS served inline, NEVER as download
     if (filePath.endsWith('.pdf')) {
       res.setHeader('Content-Type', 'application/pdf');
       
-      // Check if the request is from a browser that might have issues with inline PDFs
-      const userAgent = req.headers['user-agent'] || '';
-      const isChrome = userAgent.includes('Chrome');
-      const isFirefox = userAgent.includes('Firefox');
-      const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
-      const isEdge = userAgent.includes('Edge');
+      // FORCE INLINE - Remove any potential download triggers
+      // DO NOT set Content-Disposition at all for maximum inline compatibility
+      // res.setHeader('Content-Disposition', 'inline'); // Commented out - some browsers interpret this as download
       
-      console.log('PDF request from:', { userAgent, isChrome, isFirefox, isSafari, isEdge });
-      
-      // Force inline for all browsers in VM environment
-      res.setHeader('Content-Disposition', 'inline; filename="' + fileName + '"');
+      // Essential headers for inline PDF viewing
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET');
       
-      // Add specific headers for PDF viewing
-      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-      res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+      // Ensure maximum compatibility
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Range');
+      
+      console.log('PDF served inline (no Content-Disposition header):', fileName);
     }
     // Handle other file types
     else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
       res.setHeader('Content-Type', 'image/jpeg');
-      res.setHeader('Content-Disposition', 'inline; filename="' + fileName + '"');
+      // No Content-Disposition for images - let browser handle inline display
       res.setHeader('Cache-Control', 'public, max-age=31536000');
     }
     else if (filePath.endsWith('.png')) {
       res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Content-Disposition', 'inline; filename="' + fileName + '"');
+      // No Content-Disposition for images - let browser handle inline display
       res.setHeader('Cache-Control', 'public, max-age=31536000');
     }
     else if (filePath.endsWith('.gif')) {
       res.setHeader('Content-Type', 'image/gif');
-      res.setHeader('Content-Disposition', 'inline; filename="' + fileName + '"');
+      // No Content-Disposition for images - let browser handle inline display
       res.setHeader('Cache-Control', 'public, max-age=31536000');
     }
     // Force download for Word documents
@@ -89,6 +86,17 @@ app.use('/uploads', (req, res, next) => {
   next();
 });
 
+// Additional logging for ALL file requests to debug the issue
+app.use('/uploads', (req, res, next) => {
+  console.log('=== UPLOADS REQUEST ===');
+  console.log('Requested file:', req.path);
+  console.log('Full URL:', req.originalUrl);
+  console.log('Method:', req.method);
+  console.log('Referer:', req.headers['referer']);
+  console.log('======================');
+  next();
+});
+
 // Dedicated PDF viewing route for better VM compatibility
 app.get('/view-pdf/:filename', (req, res) => {
   try {
@@ -100,15 +108,16 @@ app.get('/view-pdf/:filename', (req, res) => {
       return res.status(404).send('File not found');
     }
     
-    // Serve PDF with explicit headers for VM compatibility
+    // Serve PDF with STRICT INLINE headers - NO DOWNLOAD
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename="' + filename + '"');
+    // CRITICAL: Do not set Content-Disposition at all for maximum inline compatibility
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    // Less restrictive headers for VM compatibility
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
+    
+    console.log('Serving PDF inline (view-pdf route):', filename);
     
     // Send the file
     res.sendFile(filePath);
@@ -157,18 +166,17 @@ app.get('/test-pdf/:filename', (req, res) => {
     console.log('User-Agent:', req.headers['user-agent']);
     console.log('Accept header:', req.headers['accept']);
     
-    // Set minimal headers for maximum compatibility
+    // Set MINIMAL headers for MAXIMUM inline compatibility
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', stats.size);
     
-    // Try different Content-Disposition approaches
-    const disposition = req.query.download === 'true' ? 'attachment' : 'inline';
-    res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+    // CRITICAL: Never use attachment for PDFs - always inline or no disposition
+    res.setHeader('Accept-Ranges', 'bytes');
     
-    console.log('Headers set:', {
+    console.log('Headers set for INLINE display:', {
       'Content-Type': 'application/pdf',
       'Content-Length': stats.size,
-      'Content-Disposition': `${disposition}; filename="${filename}"`
+      'No-Content-Disposition': 'true (forcing inline)'
     });
     
     // Stream the file
@@ -186,6 +194,124 @@ app.get('/test-pdf/:filename', (req, res) => {
   } catch (error) {
     console.error('Error in test PDF route:', error);
     res.status(500).send('Error serving PDF');
+  }
+});
+
+// Diagnostic route to test PDF viewing in VM
+app.get('/debug-pdf-test', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>PDF Debug Test</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .test-item { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+            .test-item h3 { margin-top: 0; }
+            a { display: inline-block; margin: 5px; padding: 10px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 3px; }
+            a:hover { background: #0056b3; }
+        </style>
+    </head>
+    <body>
+        <h1>PDF Viewing Test for VM Environment</h1>
+        <p>User Agent: ${req.headers['user-agent']}</p>
+        
+        <div class="test-item">
+            <h3>Test 1: Direct PDF Access</h3>
+            <a href="/uploads/default.pdf" target="_blank">Open default.pdf (Direct Upload)</a>
+            <a href="/view-pdf/default.pdf" target="_blank">Open via view-pdf route</a>
+            <a href="/test-pdf/default.pdf" target="_blank">Open via test-pdf route</a>
+        </div>
+        
+        <div class="test-item">
+            <h3>Test 2: Enhanced File Viewer</h3>
+            <a href="/file-viewer/default.pdf" target="_blank">Open Enhanced File Viewer</a>
+        </div>
+        
+        <div class="test-item">
+            <h3>Test 3: Inline Display Test</h3>
+            <a href="/test-pdf/default.pdf" target="_blank">Test PDF Inline (No Download)</a>
+            <p><em>This PDF should ALWAYS display inline, never download</em></p>
+        </div>
+        
+        <div class="test-item">
+            <h3>Test 4: Browser PDF Support</h3>
+            <button onclick="testPDFSupport()">Test PDF Support</button>
+            <div id="result"></div>
+        </div>
+        
+        <script>
+            function testPDFSupport() {
+                var result = document.getElementById('result');
+                var hasPDFSupport = navigator.mimeTypes['application/pdf'];
+                var hasAcrobat = navigator.plugins['Adobe Acrobat'];
+                
+                result.innerHTML = '<h4>Results:</h4>' +
+                    '<p>PDF MIME Type Support: ' + (hasPDFSupport ? 'Yes' : 'No') + '</p>' +
+                    '<p>Adobe Acrobat Plugin: ' + (hasAcrobat ? 'Yes' : 'No') + '</p>' +
+                    '<p>User Agent: ' + navigator.userAgent + '</p>';
+            }
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// Debug route to check file conversion status
+app.get('/debug-conversion/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const docxPath = path.join(__dirname, 'uploads', filename);
+    const pdfPath = path.join(__dirname, 'uploads', filename.replace('.docx', '.pdf'));
+    
+    const status = {
+      originalFile: filename,
+      docxExists: fs.existsSync(docxPath),
+      pdfExists: fs.existsSync(pdfPath),
+      docxSize: fs.existsSync(docxPath) ? fs.statSync(docxPath).size : 0,
+      pdfSize: fs.existsSync(pdfPath) ? fs.statSync(pdfPath).size : 0,
+      expectedPdfName: filename.replace('.docx', '.pdf')
+    };
+    
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Manual conversion trigger route for debugging
+app.get('/convert-docx/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const docxPath = path.join(__dirname, 'uploads', filename);
+    const pdfPath = path.join(__dirname, 'uploads', filename.replace('.docx', '.pdf'));
+    
+    if (!fs.existsSync(docxPath)) {
+      return res.status(404).json({ error: 'DOCX file not found' });
+    }
+    
+    const docxConverter = require('docx-pdf');
+    
+    docxConverter(docxPath, pdfPath, function(err, result) {
+      if (err) {
+        console.error('Manual conversion error:', err);
+        res.status(500).json({ 
+          error: 'Conversion failed', 
+          details: err.message,
+          suggestion: 'LibreOffice might not be installed or accessible'
+        });
+      } else {
+        console.log('Manual conversion successful:', result);
+        res.json({ 
+          success: true, 
+          message: 'Conversion completed',
+          pdfExists: fs.existsSync(pdfPath),
+          pdfSize: fs.existsSync(pdfPath) ? fs.statSync(pdfPath).size : 0
+        });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
