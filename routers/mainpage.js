@@ -65,7 +65,7 @@ student.get('/admin/editclass/:classId/:editing?',authenticateToken,admincontrol
 student.get('/edit-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenStudent, controller.editStudent);
 
 // Route for updating a student
-student.post('/update-student/:studentId', authenticateTokenStudent,controller.updateStudent);
+student.post('/update-student/:studentId/:subjectinput/:studentClass/:section/:terminal', authenticateTokenStudent,controller.updateStudent);
 
 // Route for deleting a student
 student.get('/delete-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenStudent, controller.deleteStudent);

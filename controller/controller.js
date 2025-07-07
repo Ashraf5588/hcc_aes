@@ -99,21 +99,24 @@ exports.homePage = async (req, res, next) => {
 };
 // Edit student (get data for the form)
 exports.editStudent = async (req, res, next) => {
-  const { studentId, subjectinput,studentClass,section,terminal} = req.params;
+  const { studentId, subjectinput, studentClass, section, terminal } = req.params;
+  
   try {
+    console.log(`Editing student ID: ${studentId} from collection: ${subjectinput}_${studentClass}_${section}_${terminal}`);
+    
     // Find student by ID
-    const model = getSubjectModel(subjectinput,studentClass,section,terminal);
+    const model = getSubjectModel(subjectinput, studentClass, section, terminal);
     const studentToEdit = await model.findById(studentId).lean();
     
- 
-
     if (!studentToEdit) {
+      console.log(`Student with ID ${studentId} not found in collection ${subjectinput}_${studentClass}_${section}_${terminal}`);
       return res.status(404).render('404', {
-        errorMessage: `Student record with ID ${studentId} not found`,
+        errorMessage: `Student record with ID ${studentId} not found in subject ${subjectinput}, class ${studentClass}, section ${section}, terminal ${terminal}`,
         currentPage: 'teacher'
       });
     }
 
+    console.log(`Found student: ${studentToEdit.name} (Roll: ${studentToEdit.roll})`);
 
     res.render("admin/edit-student", { 
       student: studentToEdit,
@@ -121,6 +124,7 @@ exports.editStudent = async (req, res, next) => {
     });
   } catch (err) {
     console.error(`Error editing student: ${err.message}`);
+    console.error(`Parameters: studentId=${studentId}, subject=${subjectinput}, class=${studentClass}, section=${section}, terminal=${terminal}`);
     res.status(500).render('404', {
       errorMessage: `Error editing student: ${err.message}`,
       currentPage: 'teacher'
@@ -131,39 +135,42 @@ exports.editStudent = async (req, res, next) => {
 // Update student (save the modified data)
 exports.updateStudent = async (req, res, next) => {
   const { studentId, subjectinput, studentClass, section, terminal } = req.params;
-  const updatedData = req.body;  // The updated data comes from the form
+  const updatedData = req.body;
   
   try {
-    // Find the student first to get the subject
-    let subjectModel;
-    let student;
+    console.log(`Updating student ID: ${studentId} in collection: ${subjectinput}_${studentClass}_${section}_${terminal}`);
     
-    // Iterate through all subject collections
-    const subjects = await subjectlist.find({}).lean();
-    for (const subject of subjects) {
-      const model = getSubjectModel(subject.subject,studentClass,section,terminal);
-      const foundStudent = await model.findById(studentId);
-      if (foundStudent) {
-        subjectModel = model;
-        student = foundStudent;
-        break;
-      }
-    }
+    // Get the model for the specific collection
+    const model = getSubjectModel(subjectinput, studentClass, section, terminal);
     
-    if (!subjectModel || !student) {
+    // First check if the student exists
+    const existingStudent = await model.findById(studentId);
+    
+    if (!existingStudent) {
+      console.log(`Student with ID ${studentId} not found in collection ${subjectinput}_${studentClass}_${section}_${terminal}`);
       return res.status(404).render('404', {
-        errorMessage: `Student record with ID ${studentId} not found in any subject`,
+        errorMessage: `Student record with ID ${studentId} not found in subject ${subjectinput}, class ${studentClass}, section ${section}, terminal ${terminal}`,
         currentPage: 'teacher'
       });
     }
     
     // Update the student record
-    await subjectModel.findByIdAndUpdate(studentId, updatedData, { new: true });
+    const updatedStudent = await model.findByIdAndUpdate(studentId, updatedData, { new: true });
+    
+    if (!updatedStudent) {
+      return res.status(500).render('404', {
+        errorMessage: `Failed to update student record with ID ${studentId}`,
+        currentPage: 'teacher'
+      });
+    }
+    
+    console.log(`Successfully updated student: ${updatedStudent.name} (ID: ${studentId})`);
     
     // Redirect back to the student list
-    res.redirect(`/totalStudent/${student.subject}/${student.studentClass}/${student.section}/${student.terminal}`);
+    res.redirect(`/totalStudent/${subjectinput}/${studentClass}/${section}/${terminal}`);
   } catch (err) {
     console.error(`Error updating student: ${err.message}`);
+    console.error(`Parameters: studentId=${studentId}, subject=${subjectinput}, class=${studentClass}, section=${section}, terminal=${terminal}`);
     res.status(500).render('404', {
       errorMessage: `Error updating student: ${err.message}`,
       currentPage: 'teacher'

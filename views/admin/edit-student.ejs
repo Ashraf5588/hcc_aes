@@ -94,7 +94,7 @@
         <p>Update information for <%= student.name %>, Roll No. <%= student.roll %></p>
       </div>
       
-      <form action="/update-student/<%= student._id %>" method="POST">
+      <form action="/update-student/<%= student._id %>/<%= student.subject %>/<%= student.studentClass %>/<%= student.section %>/<%= student.terminal %>" method="POST">
         <div class="row mb-3">
           <div class="col-md-6">
             <label for="name" class="form-label">Student Name</label>
