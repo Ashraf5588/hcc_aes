@@ -244,22 +244,10 @@ exports.terminal = async (req, res, next) => {
 
 
 exports.showForm = async (req, res, next) => {
-  let { studentClass } = req.params;
-  console.log(studentClass)
-
-  const subjects = await subjectlist.find({ forClass: `${studentClass}` }).lean();
-
-  console.log(subjects);
- 
-  global.availablesubject = subjects.map((sub) => sub.subject);
-
-  console.log()
-
-let { subjectinput, section, terminal } = req.params;
-
-
-
-
+  const { subjectinput,studentClass, section, terminal } = req.params;
+const subjects = await subjectlist.find({ forClass: `${studentClass}`, subject: `${subjectinput}` })
+console.log(subjects)
+ global.availablesubject = subjects.map((sub) => sub.subject);
   if(!terminal || terminal === "''" || terminal=== '"')
   {
     terminal=''
@@ -269,7 +257,7 @@ let { subjectinput, section, terminal } = req.params;
   let totalEntries = 0;
   if (availablesubject.includes(subjectinput)) {
     try {
-      const model = getSubjectModel(subjectinput, studentClass, section, terminal);
+      const model = getSubjectModel(subjectinput);
       const entriesCount = await model.aggregate([
         {
           $match: {
@@ -304,6 +292,7 @@ let { subjectinput, section, terminal } = req.params;
       terminal,
       subjects,
       totalEntries,
+      forClass: studentClass,
       ...(await getSidenavData())
     });
   }
@@ -313,7 +302,7 @@ exports.saveForm = async (req, res, next) => {
   const { subjectinput } = req.params;
   const { studentClass, section, terminal } = req.params;
 
-  const subjects = await subjectlist.find({ forClass: `${studentClass}` }).lean();
+  const subjects = await subjectlist.find({ forClass: `${studentClass}` ,subject:`${subjectinput}`}).lean();
 
   console.log(subjects);
  
@@ -322,7 +311,7 @@ exports.saveForm = async (req, res, next) => {
     return res.render("404");
   } else {
     try {
-      const model = getSubjectModel(subjectinput,studentClass, section, terminal);
+      const model = getSubjectModel(subjectinput);
       await model.create(req.body);
       res.render("FormPostMessage", {
         subjectinput,
