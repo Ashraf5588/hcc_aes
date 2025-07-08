@@ -48,7 +48,7 @@ const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
 };
 
 // Helper function to safely get subject data and handle errors with case insensitivity
-const getSubjectData = async (subjectinput, forClass, res) => {
+const getSubjectData = async (subjectinput, forClass,section,terminal, res) => {
   try {
     // First try exact match
     let currentSubject = await subjectlist.find({'subject': `${subjectinput}`, forClass: forClass})
@@ -257,7 +257,7 @@ console.log(subjects)
   let totalEntries = 0;
   if (availablesubject.includes(subjectinput)) {
     try {
-      const model = getSubjectModel(subjectinput, studentClass, section, terminal);
+      const model = getSubjectModel(subjectinput, studentClass, section,terminal);
       const entriesCount = await model.aggregate([
         {
           $match: {
@@ -299,9 +299,9 @@ console.log(subjects)
 };
 
 exports.saveForm = async (req, res, next) => {
-  const { subjectinput } = req.params;
-  const { studentClass, section, terminal } = req.params;
 
+  const { subjectinput,studentClass, section, terminal } = req.params;
+console.log(subjectinput,studentClass, section, terminal)
   const subjects = await subjectlist.find({ forClass: `${studentClass}` ,subject:`${subjectinput}`}).lean();
 
   console.log(subjects);
