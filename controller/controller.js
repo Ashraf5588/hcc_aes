@@ -257,7 +257,7 @@ console.log(subjects)
   let totalEntries = 0;
   if (availablesubject.includes(subjectinput)) {
     try {
-      const model = getSubjectModel(subjectinput);
+      const model = getSubjectModel(subjectinput, studentClass, section, terminal);
       const entriesCount = await model.aggregate([
         {
           $match: {
@@ -311,13 +311,14 @@ exports.saveForm = async (req, res, next) => {
     return res.render("404");
   } else {
     try {
-      const model = getSubjectModel(subjectinput);
+      const model = getSubjectModel(subjectinput, studentClass, section, terminal);
       await model.create(req.body);
       res.render("FormPostMessage", {
         subjectinput,
         studentClass,
         section,
         terminal,
+        forClass: studentClass,
         ...(await getSidenavData())
       });
     } catch (err) {
@@ -696,9 +697,9 @@ exports.termwisestatus = async (req,res,next)=>{
 
 exports.termwisedata = async (req,res,next)=>{
 let term = [];
-const {subjectinput,studentClass,section,status} = req.params; 
-const model = getSubjectModel(subjectinput,studentClass,section);
- 
+const {subjectinput,studentClass,section,terminal,status} = req.params; 
+const model = getSubjectModel(subjectinput,studentClass,section,terminal);
+
   // Use the helper function to safely get subject data
   const subjectData = await getSubjectData(subjectinput,studentClass,res);
 
@@ -893,7 +894,7 @@ exports.studentData = async (req, res, next) => {
     
     try {
       // Use the helper function to safely get subject data
-      const subjectData = await getSubjectData(subjectinput,studentClass,section, res);
+      const subjectData = await getSubjectData(subjectinput,studentClass,section,terminal, res);
       if (!subjectData) {
         console.log(`No subject data found for ${subjectinput}`);
         return;
