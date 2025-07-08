@@ -93,8 +93,8 @@
         <h2 class="section-title">Question Assessment</h2>
           <% 
         // Find the specific subject from the subjects array
-        let subjectData = subjects.find(subject => subject.subject === subjectname && 
-            subject.forClass === forClass);
+        let subjectData = subjects.find(subject => subject.subject === subjectname && subject.forClass === studentClass);
+        
         let max = parseInt(subjectData.max); // Get the max number of questions for the selected subject
         %>
           <div class="question-list">

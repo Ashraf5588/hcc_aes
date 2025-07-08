@@ -975,7 +975,7 @@ exports.studentrecord = async (req, res, next) => {
 const regex = new RegExp(`^${dbSection}\\s*`, 'i');
 
       const record = await studentRecord.find({section:regex,
-    roll: roll})
+    roll: roll,studentClass: studentClass}).lean();
 
   res.json(record);
   }catch(err)
