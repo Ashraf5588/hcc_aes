@@ -278,7 +278,7 @@ console.log(subjects)
       console.log(err);
     }
   }  if (!availablesubject.includes(subjectinput)) {
-    return res.render("404");
+    return res.render("gotoquestion");
   } else {
 
   
@@ -654,7 +654,10 @@ module.exports = totalcountmarks;
 const classList = mongoose.model("studentClass", classSchema, "classlist");
 const classlisttotal = await classList.find({}).lean();
 const classlistData = new Set(classlisttotal.map(item => item.studentClass));
-
+const sectionlistData = new Set(classlisttotal.map(item => item.section));
+console.log(`Class list data: ${Array.from(classlistData)}`);
+console.log(`Section list data: ${Array.from(sectionlistData)}`);
+ // Sort class list alphabetically
     res.render("analysis", {
       results: result,
       totalcountmarks,
@@ -663,6 +666,7 @@ const classlistData = new Set(classlisttotal.map(item => item.studentClass));
       section,
       totalStudent,
 classlistData,
+sectionlistData,
       terminal,
       Correct,
       inCorrect,  

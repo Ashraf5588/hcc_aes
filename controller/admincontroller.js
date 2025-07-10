@@ -249,71 +249,128 @@ exports.admin = async (req, res, next) => {
     entryArray = [];
     const subjects = await subject.find({});
     const studentClasslist = await studentClass.find({});
-    const terminal = req.params.terminal.toUpperCase() || "FIRST"; // Default to "FIRST" if not provided
- const subjectMappings = await subject.find({});
+    const terminal = req.params.terminal; // Get terminal from params
+    
+    console.log(`🔍 Processing admin data for terminal: ${terminal}`);
+    console.log(`📚 Found ${subjects.length} subjects`);
+    console.log(`🏫 Found ${studentClasslist.length} class-sections`);
 
-// 2. Convert to a lookup map: { COMPUTER: [4,5,6,...], SCIENCE: [2,3,4,...] }
-const allowedSubjectsMap = {};
+    // Create subject mappings
+    const subjectMappings = await subject.find({});
+    const allowedSubjectsMap = {};
 subjectMappings.forEach(sub => {
-  allowedSubjectsMap[sub.subject.toUpperCase()] = sub.forClass;
+  if (!allowedSubjectsMap[sub.subject]) {
+    allowedSubjectsMap[sub.subject] = [];
+  }
+  allowedSubjectsMap[sub.subject].push(String(sub.forClass));
 });
-    // Populate entryArray
-    for (const sub of subjects) {
-     
-      
 
+
+
+    console.log(`🗺️ Subject mappings:`, allowedSubjectsMap);
+
+    // Populate entryArray with improved error handling
+    for (const sub of subjects) {
+      console.log(`\n📖 Processing subject: ${sub.subject}`);
+      
       for (const stuclass of studentClasslist) {
         const section = stuclass.section;
+        const studentClass = stuclass.studentClass;
 
+        console.log(`  🔍 Checking class ${studentClass}, section ${section}`);
 
+        // Check if this subject is allowed for this class
+        if (!allowedSubjectsMap[sub.subject]?.includes(studentClass.toString())) {
+          console.log(`  ⏭️  Skipping ${sub.subject} for class ${studentClass} (not in allowed classes)`);
+          continue;
+        }
 
-   if (!allowedSubjectsMap[sub.subject]?.includes(stuclass.studentClass)) {
-      continue;
-    }
+        const modelName = `${sub.subject}_${studentClass}_${section}_${terminal}`;
+        console.log(`  📊 Model name: ${modelName}`);
 
-    const modelName = `${sub.subject}_${stuclass.studentClass}_${section}_${terminal}`;
+        try {
+          // Check if collection exists first
+          const db = mongoose.connection.db;
+          const collections = await db.listCollections({ name: modelName }).toArray();
+          
+          if (collections.length === 0) {
+            console.log(`  ⚠️  Collection ${modelName} doesn't exist, setting count to 0`);
+            entryArray.push({
+              studentClass: studentClass,
+              section: section,
+              subject: sub.subject,
+              terminal: terminal,
+              totalentry: 0,
+            });
+            continue;
+          }
 
-    // Avoid redefining the model if it exists
-    const model = mongoose.models[modelName] ||
-                  mongoose.model(modelName, studentSchema, modelName);
+          // Create or get existing model
+          const model = mongoose.models[modelName] ||
+                        mongoose.model(modelName, studentSchema, modelName);
 
-        const totalstudentthirdterminal = await model.aggregate([
-          { $match: { $and: [{ section }, { terminal: `${terminal}` }, { studentClass: stuclass.studentClass }] } },
-          { $count: "count" },
-        ]);
+          // Query the collection with better error handling
+          const totalstudentthirdterminal = await model.aggregate([
+            { 
+              $match: { 
+                section: section,
+                terminal: terminal,
+                studentClass: studentClass
+              } 
+            },
+            { $count: "count" },
+          ]);
 
-        entryArray.push({
-          studentClass: stuclass.studentClass,
-          section: stuclass.section,
-          subject: sub.subject,
-          terminal: `${terminal}`,
-          totalentry: totalstudentthirdterminal[0]?.count || 0,
-        });
+          const totalentry = totalstudentthirdterminal[0]?.count || 0;
+          console.log(`  ✅ Found ${totalentry} students`);
+
+          entryArray.push({
+            studentClass: studentClass,
+            section: section,
+            subject: sub.subject,
+            terminal: terminal,
+            totalentry: totalentry,
+          });
+
+        } catch (modelError) {
+          console.error(`  ❌ Error querying ${modelName}:`, modelError.message);
+          // Add entry with 0 count if there's an error
+          entryArray.push({
+            studentClass: studentClass,
+            section: section,
+            subject: sub.subject,
+            terminal: terminal,
+            totalentry: 0,
+          });
+        }
       }
     }
-      // Transform entryArray into pivoted format
+
+    console.log(`\n📋 Total entries processed: ${entryArray.length}`);
+    console.log(`📊 Entry array sample:`, entryArray.slice(0, 3));
+
+    // Transform entryArray into pivoted format with fixed variable names
     let pivotedData;
     try {
-      const studentClassdata = await studentClass.find({});
-      // Only use the transformation function if it exists
       if (typeof transformToPivotedFormat === 'function') {
         pivotedData = transformToPivotedFormat(entryArray);
-        console.log("Pivoted data generated successfully");
+        console.log("✅ Pivoted data generated successfully using function");
       } else {
-        console.error("transformToPivotedFormat function is not defined");
-        // Create a simple pivoted data format manually
-        pivotedData = { subjects: [], headers: [], pivotTable: {} };
+        console.log("⚠️  transformToPivotedFormat function not available, creating manually");
         
-        // Extract unique subjects and class-sections
-        const subjects = [...new Set(entryArray.map(e => e.subject))].sort();
-        const headers = [...new Set(entryArray.map(e => `${e.studentClass}-${e.section}`))].sort();
+        // Create pivot table manually with DIFFERENT variable names to avoid conflict
+        const uniqueSubjects = [...new Set(entryArray.map(e => e.subject))].sort();
+        const uniqueHeaders = [...new Set(entryArray.map(e => `${e.studentClass}-${e.section}`))].sort();
+        
+        console.log(`📚 Unique subjects: ${uniqueSubjects.length}`, uniqueSubjects);
+        console.log(`🏫 Unique headers: ${uniqueHeaders.length}`, uniqueHeaders);
         
         // Create pivot table
         const pivotTable = {};
-        subjects.forEach(subject => {
-          pivotTable[subject] = {};
-          headers.forEach(header => {
-            pivotTable[subject][header] = 0;
+        uniqueSubjects.forEach(subjectName => {
+          pivotTable[subjectName] = {};
+          uniqueHeaders.forEach(header => {
+            pivotTable[subjectName][header] = 0;
           });
         });
         
@@ -325,15 +382,31 @@ subjectMappings.forEach(sub => {
           }
         });
         
-        pivotedData = { subjects, headers, pivotTable };
+        pivotedData = { 
+          subjects: uniqueSubjects, 
+          headers: uniqueHeaders, 
+          pivotTable: pivotTable 
+        };
+        
+        console.log("✅ Manual pivot table created");
       }
     } catch (error) {
-      console.error("Error transforming data:", error);
+      console.error("❌ Error transforming data:", error);
       pivotedData = { subjects: [], headers: [], pivotTable: {} };
     }
-const studentClassdata = await studentClass.find({});
+
+    // Get student class data separately to avoid variable conflicts
+    const studentClassdata = await studentClass.find({});
+    
     // Get sidenav data
     const sidenavData = await getSidenavData();
+    
+    console.log(`\n🎯 Final data summary:`);
+    console.log(`  - Subjects: ${subjects.length}`);
+    console.log(`  - Class list: ${studentClasslist.length}`);
+    console.log(`  - Entry array: ${entryArray.length}`);
+    console.log(`  - Pivot subjects: ${pivotedData.subjects.length}`);
+    console.log(`  - Pivot headers: ${pivotedData.headers.length}`);
     
     // Render with entryArray and pivotedData
     res.render("admin/adminpannel", {
@@ -343,11 +416,13 @@ const studentClassdata = await studentClass.find({});
       entryArray,
       pivotedData,
       terminal, 
-      studentClassdata,// Ensure entryArray is passed to the template
+      studentClassdata,
       ...sidenavData
     });
+    
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error in admin function:", err);
+    console.error("Stack trace:", err.stack);
     next(err);
   }
 };
