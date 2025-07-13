@@ -4,7 +4,6 @@ const app = express();
 const jwt = require("jsonwebtoken");
 var docxConverter = require('docx-pdf');
 const bs = require("bikram-sambat-js")
-
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const { rootDir } = require("../utils/path");
@@ -157,7 +156,7 @@ exports.adminlogin = async (req, res, next) => {
 exports.adminloginpost = async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    const user = await admin.findOne({
+    const user = await superadmin.findOne({
       username: `${username}`,
       password: `${password}`,
     });
