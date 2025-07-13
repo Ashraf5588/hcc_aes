@@ -9,6 +9,7 @@ const { rootDir } = require("../utils/path");
 const { studentSchema } = require("../model/schema");
 const { studentrecordschema } = require("../model/adminschema");
 const { classSchema, subjectSchema,terminalSchema } = require("../model/adminschema");
+const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
@@ -48,7 +49,7 @@ const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
 };
 
 // Helper function to safely get subject data and handle errors with case insensitivity
-const getSubjectData = async (subjectinput, forClass,section,terminal, res) => {
+const getSubjectData = async (subjectinput, forClass, res) => {
   try {
     // First try exact match
     let currentSubject = await subjectlist.find({'subject': `${subjectinput}`, forClass: forClass})
@@ -100,7 +101,7 @@ exports.homePage = async (req, res, next) => {
 // Edit student (get data for the form)
 exports.editStudent = async (req, res, next) => {
   const { studentId, subjectinput, studentClass, section, terminal } = req.params;
-  
+  const {controller} = req.query;
   try {
     console.log(`Editing student ID: ${studentId} from collection: ${subjectinput}_${studentClass}_${section}_${terminal}`);
     
@@ -120,6 +121,7 @@ exports.editStudent = async (req, res, next) => {
 
     res.render("admin/edit-student", { 
       student: studentToEdit,
+      controller,
       ...(await getSidenavData())
     });
   } catch (err) {
@@ -136,6 +138,9 @@ exports.editStudent = async (req, res, next) => {
 exports.updateStudent = async (req, res, next) => {
   const { studentId, subjectinput, studentClass, section, terminal } = req.params;
   const updatedData = req.body;
+  const { controller} = req.query;
+  console.log(req.url)
+  console.log(controller);
   
   try {
     console.log(`Updating student ID: ${studentId} in collection: ${subjectinput}_${studentClass}_${section}_${terminal}`);
@@ -167,7 +172,8 @@ exports.updateStudent = async (req, res, next) => {
     console.log(`Successfully updated student: ${updatedStudent.name} (ID: ${studentId})`);
     
     // Redirect back to the student list
-    res.redirect(`/totalStudent/${subjectinput}/${studentClass}/${section}/${terminal}`);
+
+    res.redirect(`/${controller}/${subjectinput}/${studentClass}/${section}/${terminal}`);
   } catch (err) {
     console.error(`Error updating student: ${err.message}`);
     console.error(`Parameters: studentId=${studentId}, subject=${subjectinput}, class=${studentClass}, section=${section}, terminal=${terminal}`);
@@ -246,18 +252,25 @@ exports.terminal = async (req, res, next) => {
 exports.showForm = async (req, res, next) => {
   const { subjectinput,studentClass, section, terminal } = req.params;
 const subjects = await subjectlist.find({ forClass: `${studentClass}`, subject: `${subjectinput}` })
-console.log(subjects)
+  const model = getSubjectModel(subjectinput, studentClass, section, terminal);
+      const totalcountmarks = await model.find({ subject: `${subjectinput}`, section: `${section}`, terminal: `${terminal}`, studentClass: `${studentClass}` },
+      { roll: 1, name: 1 ,totalMarks: 1,_id:1,studentClass:1,section:1,subject:1}).lean();
+
  global.availablesubject = subjects.map((sub) => sub.subject);
   if(!terminal || terminal === "''" || terminal=== '"')
   {
     terminal=''
   }
   
+
+
+  
   // Get total entries count for this subject, class, and section
   let totalEntries = 0;
   if (availablesubject.includes(subjectinput)) {
     try {
-      const model = getSubjectModel(subjectinput, studentClass, section,terminal);
+      const model = getSubjectModel(subjectinput, studentClass, section, terminal);
+     
       const entriesCount = await model.aggregate([
         {
           $match: {
@@ -274,6 +287,7 @@ console.log(subjects)
       totalEntries = entriesCount.length > 0 && entriesCount[0].count
         ? entriesCount[0].count
         : 0;
+        
     } catch (err) {
       console.log(err);
     }
@@ -293,15 +307,16 @@ console.log(subjects)
       subjects,
       totalEntries,
       forClass: studentClass,
+      totalcountmarks,
       ...(await getSidenavData())
     });
   }
 };
 
 exports.saveForm = async (req, res, next) => {
+  const { subjectinput } = req.params;
+  const { studentClass, section, terminal } = req.params;
 
-  const { subjectinput,studentClass, section, terminal } = req.params;
-console.log(subjectinput,studentClass, section, terminal)
   const subjects = await subjectlist.find({ forClass: `${studentClass}` ,subject:`${subjectinput}`}).lean();
 
   console.log(subjects);
@@ -654,10 +669,7 @@ module.exports = totalcountmarks;
 const classList = mongoose.model("studentClass", classSchema, "classlist");
 const classlisttotal = await classList.find({}).lean();
 const classlistData = new Set(classlisttotal.map(item => item.studentClass));
-const sectionlistData = new Set(classlisttotal.map(item => item.section));
-console.log(`Class list data: ${Array.from(classlistData)}`);
-console.log(`Section list data: ${Array.from(sectionlistData)}`);
- // Sort class list alphabetically
+
     res.render("analysis", {
       results: result,
       totalcountmarks,
@@ -666,7 +678,6 @@ console.log(`Section list data: ${Array.from(sectionlistData)}`);
       section,
       totalStudent,
 classlistData,
-sectionlistData,
       terminal,
       Correct,
       inCorrect,  
@@ -979,7 +990,7 @@ exports.studentrecord = async (req, res, next) => {
 const regex = new RegExp(`^${dbSection}\\s*`, 'i');
 
       const record = await studentRecord.find({section:regex,
-    roll: roll,studentClass: studentClass}).lean();
+    roll: roll,studentClass:studentClass})
 
   res.json(record);
   }catch(err)
@@ -987,6 +998,19 @@ const regex = new RegExp(`^${dbSection}\\s*`, 'i');
     res.status(500).json({ error: err.message });
   }
 };
+exports.checkroll = async (req,res,next) =>
+{
+const {subjectinput,studentClass,section,terminal} = req.params;
+const {roll} = req.query;
+const model = getSubjectModel(subjectinput,studentClass,section,terminal);
 
-
-
+const exist = await model.findOne({studentClass:studentClass,section:section,subject:subjectinput,roll:roll,terminal:terminal})
+if(exist)
+{
+  res.json({studentName: exist.name, roll: exist.roll, section: exist.section, studentClass: exist.studentClass, terminal: exist.terminal, subject: exist.subject, totalMarks: exist.totalMarks });
+}
+else
+{
+  res.json(false)
+}
+};

@@ -6,4 +6,11 @@ const adminSchema = new mongoose.Schema({
 
   
 });
-module.exports = {adminSchema};
+const superadminSchema = new mongoose.Schema({
+ "username":String,
+ "password":String,
+ "role":String
+
+});
+
+module.exports = {adminSchema, superadminSchema};

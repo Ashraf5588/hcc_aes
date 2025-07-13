@@ -48,9 +48,39 @@
                     <div class="info-card-content">
                         <h3 class="info-card-title">Total Student Entries</h3>
                         <div class="info-card-value"><%= totalEntries %></div>
+                        <div class="entereddata" style="max-height: 170px; overflow-y: auto;">
+                            scroll Down to see all entries <i class="fa-solid fa-arrows-up-down fa-bounce" style="color: #74C0FC;"></i>
+                            <table border="1" cellspacing="0" class="table table-striped table-bordered " style="width: 20%; text-align: center;" scroll="yes">
+                                <tr>
+                                    <th>Roll</th>
+                                    <th>Name</th>
+                <th>Total Marks</th>
+                <th>Action</th>
+</tr>
+<% totalcountmarks.sort((a, b) => Number(a.roll) - Number(b.roll)); %>
+<% totalcountmarks.forEach((marks, index) => { %>
+    <tr>
+    <td><%=marks.roll %></td>
+    <td><%=marks.name %></td>
+    <td><%=marks.totalMarks %></td> 
+    <td>
+     <a href="/edit-student/<%= marks._id %>/<%= marks.subject %>/<%= marks.studentClass %>/<%= marks.section %>/<%=terminal %>?controller=forms" class="action-btn edit-btn">
+                        <i class="fas fa-pencil-alt"></i>
+                      </a>
+                      <a href="/delete-student/<%= marks._id %>/<%= marks.subject %>/<%= marks.studentClass %>/<%= marks.section %>/<%=terminal %>?controller=forms" 
+                         onclick="return confirm('Are you sure you want to delete this student?');" 
+                         class="action-btn delete-btn">
+                        <i class="fas fa-trash-alt"></i>
+                      </a></td>
+   <% }) %>
+   </tr>
+
+             </table> 
+
+                        </div>
                         <div class="mt-2">Class <%= studentClass %> (<%= section %>)</div>
                         <div class="mt-1"><%= terminal %> Term</div>
-                        <a href="/totalStudent/<%= subjectname %>/<%= studentClass %>/<%= section %>/<%= terminal %>"><button style="background-color: darkred;color:white;border-radius: 5px;border: none;height: 2.5rem;width: 120%;">Edit Student</button></a>
+                       
                     </div>
                 </div>
             </div>
@@ -88,8 +118,27 @@
                     <label for="terminal" class="form-label">Term</label>
                     <input type="text" name="terminal" id="terminal" value="<%= terminal %>" class="form-control" required placeholder="Add Terminal Name" <%= terminal ? 'readonly' : '' %>>
                 </div>
-            </div>
-        </section>    <section>
+            </div> <h2><center><input type="checkbox" name="absent" id="absent" class="form-check-input mt-1" value="absent" style="border-color: red;color: brown;"> Absent</center></h2>
+            <script>
+                document.getElementById('absent').addEventListener('change', function() {
+                    const questionRadios = document.querySelectorAll('#formDiv input[type="radio"]');
+                    if (this.checked) {
+                        let totalmarks = document.getElementById('totalmarks');
+                        totalmarks.value = 0
+                        document.getElementById('formDiv').style.display = 'none'; // Hide the form section
+                        questionRadios.forEach(radio => {
+                            radio.removeAttribute('required')
+                        });
+                }
+                else {
+                    document.getElementById('formDiv').style.display = 'block';
+                    questionRadios.forEach(radio => {
+        radio.setAttribute('required', true);
+      }); // Show the form section
+                }
+            });
+            </script>
+        </section>    <section id="formDiv">
         <h2 class="section-title">Question Assessment</h2>
           <% 
         // Find the specific subject from the subjects array
@@ -215,10 +264,38 @@
 const studentClass = document.getElementById('studentClass').value.trim();
 const section = document.getElementById('section').value.trim();
 const terminal = document.getElementById('terminal').value.trim();
+let debounceTimeout;
 
         const rollInput = document.getElementById('roll');
         rollInput.addEventListener('input',async function() {
+            clearTimeout(debounceTimeout);
 
+    debounceTimeout = setTimeout(async () => {
+      const rollValue = rollInput.value.trim();
+      if (!rollValue) return;
+        
+            
+          // Debounce to avoid too many requests
+
+            // logic to check if the input roll number already exist in the database;
+            const responseBack = await fetch(`/checkroll/${encodeURIComponent(subject)}/${studentClass}/${encodeURIComponent(section)}/${terminal}?roll=${encodeURIComponent(rollInput.value)}`);
+            if (!responseBack.ok) {
+                console.error('Error checking roll number:', responseBack.statusText);
+                return;
+            }
+            const rollExists = await responseBack.json();
+            console.log(rollExists);
+            
+            if (rollExists) {
+                alert(`Roll number  ${rollExists.roll} with Name ${rollExists.studentName} with Total Marks ${rollExists.totalMarks} already exists for ${rollExists.studentClass}-${rollExists.section} for ${rollExists.terminal} Terminal. Please enter a different roll number or delete previous one.`);
+                rollInput.value = ''; // Clear the input
+                document.getElementById('name').value = ''; // Clear the name field
+                return;
+                
+            }
+            
+                // Fetch student data based on the roll number
+                // Only fetch if the roll number is valid and does not already exist
              const res = await fetch(`/student_data/${encodeURIComponent(subject)}/${studentClass}/${encodeURIComponent(section)}/${terminal}?roll=${encodeURIComponent(rollInput.value)}`);
             if (!res.ok) {
                 console.error('Error fetching student data:', res.statusText);
@@ -229,13 +306,16 @@ const terminal = document.getElementById('terminal').value.trim();
             console.log(data)
             if (data && data.length > 0) {
                 // Autofill the other fields with the retrieved data
+
+                
                document.getElementById('name').value = data[0].name || '';
                 document.getElementById('roll').value = data[0].roll || '';
             }
-            // Do something with the data
-        });
         
-     </script>
+            // Do something with the data
+        }, 600); // Adjust the debounce time as needed
+        });
+    </script>
     <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/form.js"></script>

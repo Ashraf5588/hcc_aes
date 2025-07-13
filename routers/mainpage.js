@@ -41,10 +41,10 @@ student.post('/student/login/home',admincontrol.studentloginpost)
 student.get('/admin/term/:terminal',authenticateToken,admincontrol.admin)
 
 
-student.get('/admin/subject/:subId?',authenticateToken,admincontrol.showSubject)
+student.get('/admin/subject/:subId?',authenticateTokenStudent,admincontrol.showSubject)
 
-student.post('/admin/subjectadd/:subId?',authenticateToken,upload.single('questionPaperOfClass'),admincontrol.addSubject)
-student.get('/admin/get_subject_data',authenticateToken,admincontrol.subjectData)
+student.post('/admin/subjectadd/:subId?',authenticateTokenStudent,upload.single('questionPaperOfClass'),admincontrol.addSubject)
+student.get('/admin/get_subject_data',authenticateTokenStudent,admincontrol.subjectData)
 
 student.get('/admin/class/:classId?',authenticateToken,admincontrol.showClass)
 student.post('/admin/class/:classId?',authenticateToken,admincontrol.addClass)
@@ -59,7 +59,7 @@ student.get('/delete/new/subject/:subjectId',authenticateToken,admincontrol.dele
 
 student.get('/delete/subject/:subjectId/:subjectname?',authenticateToken,admincontrol.deleteSubject)
 student.get('/delete/class/:classId',authenticateToken,admincontrol.deleteStudentClass)
-student.get('/admin/editsub/:subId/:editing?',authenticateToken,admincontrol.editSub)
+student.get('/admin/editsub/:subId/:editing?',authenticateTokenStudent,admincontrol.editSub)
 student.get('/admin/editclass/:classId/:editing?',authenticateToken,admincontrol.editClass)
 // Route for editing a student
 student.get('/edit-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenStudent, controller.editStudent);
@@ -113,6 +113,7 @@ student.get('/debug/:subjectinput/:studentClass/:section/:terminal', (req, res) 
 
 student.get('/studentData/:subjectinput/:studentClass/:section/:qno/:status/:terminal',authenticateTokenStudent,controller.studentData)
 student.get('/totalStudent/:subjectinput/:studentClass/:section/:terminal',authenticateTokenStudent,controller.totalStudent)
+student.get('/checkroll/:subjectinput/:studentClass/:section/:terminal',authenticateTokenStudent,controller.checkroll)
 
 // Debug route to check available subjects
 student.get('/debug/subjects', async (req, res) => {

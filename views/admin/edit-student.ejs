@@ -94,7 +94,7 @@
         <p>Update information for <%= student.name %>, Roll No. <%= student.roll %></p>
       </div>
       
-      <form action="/update-student/<%= student._id %>/<%= student.subject %>/<%= student.studentClass %>/<%= student.section %>/<%= student.terminal %>" method="POST">
+      <form action="/update-student/<%= student._id %>/<%= student.subject %>/<%= student.studentClass %>/<%= student.section %>/<%= student.terminal %>?controller=<%=controller%>" method="POST">
         <div class="row mb-3">
           <div class="col-md-6">
             <label for="name" class="form-label">Student Name</label>
@@ -127,6 +127,63 @@
             <input type="text" class="form-control readonly-field" id="terminal" name="terminal" value="<%= student.terminal %>" readonly>
           </div>
         </div>
+         <script>
+        const subject = document.getElementById('subject').value.trim();
+const studentClass = document.getElementById('studentClass').value.trim();
+const section = document.getElementById('section').value.trim();
+const terminal = document.getElementById('terminal').value.trim();
+let debounceTimeout;
+
+        const rollInput = document.getElementById('roll');
+        rollInput.addEventListener('input',async function() {
+            clearTimeout(debounceTimeout);
+
+    debounceTimeout = setTimeout(async () => {
+      const rollValue = rollInput.value.trim();
+      if (!rollValue) return;
+        
+            
+          // Debounce to avoid too many requests
+
+            // logic to check if the input roll number already exist in the database;
+            const responseBack = await fetch(`/checkroll/${encodeURIComponent(subject)}/${studentClass}/${encodeURIComponent(section)}/${terminal}?roll=${encodeURIComponent(rollInput.value)}`);
+            if (!responseBack.ok) {
+                console.error('Error checking roll number:', responseBack.statusText);
+                return;
+            }
+            const rollExists = await responseBack.json();
+            console.log(rollExists);
+            
+            if (rollExists) {
+                alert(`Roll number  ${rollExists.roll} with Name ${rollExists.studentName} with Total Marks ${rollExists.totalMarks} already exists for ${rollExists.studentClass}-${rollExists.section} for ${rollExists.terminal} Terminal. Please enter a different roll number or delete previous one.`);
+                rollInput.value = ''; // Clear the input
+                document.getElementById('name').value = ''; // Clear the name field
+                return;
+                
+            }
+            
+                // Fetch student data based on the roll number
+                // Only fetch if the roll number is valid and does not already exist
+             const res = await fetch(`/student_data/${encodeURIComponent(subject)}/${studentClass}/${encodeURIComponent(section)}/${terminal}?roll=${encodeURIComponent(rollInput.value)}`);
+            if (!res.ok) {
+                console.error('Error fetching student data:', res.statusText);
+                return;
+            }
+
+            const data = await res.json();
+            console.log(data)
+            if (data && data.length > 0) {
+                // Autofill the other fields with the retrieved data
+
+                
+               document.getElementById('name').value = data[0].name || '';
+                document.getElementById('roll').value = data[0].roll || '';
+            }
+        
+            // Do something with the data
+        }, 600); // Adjust the debounce time as needed
+        });
+    </script>
         
         
         <% 
@@ -158,7 +215,7 @@
          </script>
         
         <div class="d-flex justify-content-between mt-4">
-          <a href="/totalStudent/<%= student.subject %>/<%= student.studentClass %>/<%= student.section %>/<%= student.terminal %>" class="btn btn-secondary">
+          <a href="/<%=controller%>/<%= student.subject %>/<%= student.studentClass %>/<%= student.section %>/<%= student.terminal %>" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-2"></i> Cancel
           </a>
           <button type="submit" class="btn btn-primary">
@@ -168,7 +225,7 @@
       </form>
     </div>
   </div>
-  
+   
   <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -9,7 +9,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const { rootDir } = require("../utils/path");
 const { classSchema, subjectSchema, terminalSchema,newsubjectSchema } = require("../model/adminschema");
-const { adminSchema } = require("../model/admin");
+const { adminSchema,superadminSchema} = require("../model/admin");
 const { studentSchema } = require("../model/schema");
 const student = require("../routers/mainpage");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
@@ -50,6 +50,7 @@ const subject = mongoose.model("subject", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const studentTerminal = mongoose.model("studentTerminal", classSchema, "terminal");
 const admin = mongoose.model("admin", adminSchema, "admin");
+const superadmin = mongoose.model("superadmin", superadminSchema, "superadmin");
 let entryArray = [];
 
 /**

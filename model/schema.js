@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const studentSchema = new mongoose.Schema({
   "name": { type: String, required: false },
   "totalMarks": { type: Number, required: false },
-  "roll": { type: String, required: false },
+  "roll": { type: String, required: false,unique:true },
   "studentClass": { type: String, required: false },
 
   "section": { type: String, required: false },
