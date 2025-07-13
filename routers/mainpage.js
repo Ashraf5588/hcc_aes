@@ -147,12 +147,12 @@ student.get('/debug/subjects', async (req, res) => {
 });
 student.get('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecord)
 student.post('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecordpost)
-
+student.get('/user',authenticateToken,admincontrol.showuser)
 // Route to view/display uploaded files in browser
-student.get('/view-file/:filename', authenticateToken, admincontrol.viewFile)
+student.get('/view-file/:filename', authenticateTokenStudent, admincontrol.viewFile)
 
 // Enhanced file viewer routes for better VM compatibility
-student.get('/file-viewer/:filename', authenticateToken, (req, res) => {
+student.get('/file-viewer/:filename', authenticateTokenStudent, (req, res) => {
   const filename = req.params.filename;
   const path = require('path');
   const fs = require('fs');

@@ -387,6 +387,7 @@
     <div class="container">
         <div class="action-section">
             <div class="action-buttons">
+                <a href="/admin/subject"><button class="btn" style="background-color: green;color: white;"   >Set Question Paper Format</button></a>
                 <a href="#subject-section" class="btn btn-primary action-btn">
                     <i class="fas fa-pen-to-square"></i> Enter Data
                 </a>
@@ -424,43 +425,15 @@
                                 <i class="fas fa-chart-line me-2"></i> View Report
                             </button>
                         </div>
+                      
                     </div>
+             
                 </div>
-            </div>
+                
 
-            <!-- Original Subject Grid (now hidden by default) -->
-            <div class="subject-grid" style="display: none;">
-                <% uniqueSubjects.forEach((sub)=>{%>
-                    <% if (sub) { %>
-                        <div class="subject-card">
-                            <div class="subject-header">
-                                <div class="subject-icon">
-                                    <lord-icon
-                                        src="https://cdn.lordicon.com/xmaezqzk.json"
-                                        trigger="hover"
-                                        colors="primary:#0ea5e9,secondary:#8b5a2b"
-                                        style="width:40px;height:40px">
-                                    </lord-icon>
-                                </div>
-                                <h3 class="subject-name"><%= sub %></h3>
-                            </div>                            <div class="subject-body">
-                                <p>Manage <%= sub %> assessment data</p>
-                            </div>
-                            <div class="subject-action">
-                                <div class="d-flex gap-2">
-                                    <a href="/forms/<%= sub.trim() %>" class="subject-btn btn-enter">
-                                        <i class="fas fa-pen-to-square me-1"></i> Enter Data
-                                    </a>
-                                    <a href="/teacher/<%= sub.trim() %>/findData" class="subject-btn btn-report">
-                                        <i class="fas fa-chart-line me-1"></i> Report
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    <% } %>
-                <% }) %>
             </div>
-        </div>
+          
+          
     </div>
     
     <footer>

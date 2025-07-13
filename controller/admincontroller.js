@@ -1136,6 +1136,21 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
   res.status(500).send("Error processing student records: " + err.message);
 }
 }
+exports.showuser = async (req, res, next) => {
+  try {
+    const userList = await user.find({}).lean();
+    const sidenavData = await getSidenavData();
+    res.render("admin/userlist", {
+      userList,
+      editing: false,
+      currentPage: 'adminUser',
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in showuser:", err);
+    res.status(500).send("Error loading user list: " + err.message);
+  }
+};
 
 exports.viewFile = async (req, res, next) => {
   try {
