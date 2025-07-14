@@ -1858,13 +1858,31 @@
               <div class="modal-body p-0 position-relative">
                 <div class="pdf-modal-container h-100 d-flex flex-column justify-content-center align-items-center">
                   <!-- Loading spinner is added here initially -->
-                  <div class="d-flex flex-column justify-content-center align-items-center h-100 pdf-loading">
+                  <div class="d-flex flex-column justify-content-center align-items-center h-100 pdf-loading" id="modalPdfLoadingIndicator">
                     <div class="spinner-border text-primary" role="status">
                       <span class="visually-hidden">Loading...</span>
                     </div>
                     <div class="mt-2">Loading question paper...</div>
                   </div>
+                  
+                  <!-- Button to load PDF using our custom PDF.js viewer -->
+                  <div class="text-center my-4" id="modalPdfViewerControls">
+                    <button id="loadModalPdf" class="btn btn-primary">
+                      <i class="fas fa-file-pdf me-2"></i> Load Question Paper
+                    </button>
+                    <p class="text-muted small mt-2">Click to view the PDF with page navigation</p>
+                  </div>
+                  
                   <!-- PDF will be loaded here via JavaScript -->
+                  <div id="modalPdfContainer" style="width: 100%; height: 100%; min-height: 75vh;"></div>
+                  
+                  <!-- PDF.js viewer link -->
+                  <div class="text-center mt-3" id="pdfJsViewerLink" style="display: none;">
+                    <a href="/web/viewer.html?file=/uploads/<%=file%>" target="_blank" class="btn btn-outline-primary">
+                      <i class="fas fa-external-link-alt me-1"></i> Open in PDF.js Viewer
+                    </a>
+                    <p class="text-muted small mt-2">For best experience with navigation between pages</p>
+                  </div>
                 </div>
               </div>
               <div class="modal-footer d-flex justify-content-between" style="background-color: #f8f9fa;">
@@ -1873,7 +1891,10 @@
                   <a href="/uploads/<%=file%>" class="btn btn-outline-primary" download>
                     <i class="fas fa-download me-1"></i> Download
                   </a>
-                  <button type="button" class="btn btn-secondary ms-2" data-bs-dismiss="modal">
+                  <button id="openPdfJsViewer" class="btn btn-primary mx-2">
+                    <i class="fas fa-external-link-alt me-1"></i> Open in PDF.js
+                  </button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i> Close
                   </button>
                 </div>
@@ -2351,25 +2372,21 @@
               <span>For best experience, tap the button below to view the question paper.</span>
             </div>
             
-            <!-- Primary: object tag (most compatible) -->
-            <object 
-              data="/uploads/<%=file%>#toolbar=0&navpanes=0&view=FitH&embedded=true" 
-              type="application/pdf" 
-              width="100%" 
-              height="25vh" 
+            <!-- Placeholder for PDF that will be loaded only when needed -->
+            <div 
               id="questionPaperObject"
-              style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); transition: all 0.3s ease;"
-              onload="document.getElementById('pdfLoadingIndicator').style.display = 'none';"
-              class="pdf-viewer">
+              data-pdf-url="/uploads/<%=file%>#toolbar=0&navpanes=0&view=FitH&embedded=true"
+              style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); transition: all 0.3s ease; 
+                     min-height: 25vh; background-color: #f8f9fa; display: flex; align-items: center; 
+                     justify-content: center; flex-direction: column;"
+              class="pdf-viewer-placeholder">
               
-              <!-- Fallback: embed tag (for older browsers) -->
-              <embed 
-                src="/uploads/<%=file%>#toolbar=0&navpanes=0&view=FitH" 
-                type="application/pdf"
-                width="100%" 
-                height="25vh"
-                style="border-radius: 8px;" 
-                class="pdf-viewer">
+              <i class="fas fa-file-pdf fa-3x mb-3" style="color: #dc3545;"></i>
+              <h5>Question Paper PDF</h5>
+              <p class="text-muted">Click the button below to load the question paper</p>
+              <button onclick="loadQuestionPaper()" class="btn btn-primary mt-2">
+                <i class="fas fa-file-pdf me-2"></i> Load Question Paper
+              </button>
                 
                 <!-- Enhanced fallback message with clear instructions and styling -->
                 <div class="pdf-blocked-message p-4 text-center">
@@ -2380,7 +2397,7 @@
                     <p class="text-muted small">Please use one of the options below:</p>
                   </div>
                 </div>
-            </object>
+            </div>
           </div>
           
           <!-- Enhanced buttons with clear options for users -->
@@ -2446,6 +2463,91 @@
 
 <!-- Create a mapping of questions to group all categories by question number -->
 <script>
+  // Function to lazily load the PDF when requested
+  function loadQuestionPaper() {
+    const placeholder = document.getElementById('questionPaperObject');
+    if (!placeholder) return;
+    
+    const pdfUrl = placeholder.getAttribute('data-pdf-url');
+    if (!pdfUrl) return;
+    
+    // Show loading indicator
+    const loadingIndicator = document.getElementById('pdfLoadingIndicator');
+    if (loadingIndicator) {
+      loadingIndicator.style.display = 'block';
+    }
+    
+    // For better compatibility and to prevent auto-downloads, use PDF.js viewer instead
+    const isWebView = isAndroidWebView();
+    if (isWebView || !supportsPdfEmbedding()) {
+      // Use PDF.js viewer for WebView or browsers without PDF support
+      const timestamp = new Date().getTime();
+      const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + '<%= file %>')}&t=${timestamp}`;
+      
+      // Use button to open PDF.js in new tab
+      const pdfJsButton = document.createElement('div');
+      pdfJsButton.className = 'text-center my-4';
+      pdfJsButton.innerHTML = `
+        <button class="btn btn-primary" onclick="window.open('${pdfJsViewerUrl}', '_blank')">
+          <i class="fas fa-file-pdf me-2"></i> Open PDF with Navigation
+        </button>
+        <p class="text-muted small mt-2">Opens in a new tab with full page navigation</p>
+      `;
+      
+      placeholder.innerHTML = '';
+      placeholder.appendChild(pdfJsButton);
+      
+      if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+      }
+      
+      return;
+    }
+    
+    // For browsers that support PDF embedding
+    // Create object element
+    const pdfObject = document.createElement('object');
+    pdfObject.setAttribute('data', pdfUrl);
+    pdfObject.setAttribute('type', 'application/pdf');
+    pdfObject.setAttribute('width', '100%');
+    pdfObject.setAttribute('height', '25vh');
+    pdfObject.setAttribute('id', 'questionPaperViewer');
+    pdfObject.setAttribute('class', 'pdf-viewer');
+    pdfObject.style.borderRadius = '8px';
+    pdfObject.style.boxShadow = '0 4px 8px rgba(0,0,0,0.05)';
+    pdfObject.style.transition = 'all 0.3s ease';
+    
+    // Add event listener to hide loading indicator when PDF loads
+    pdfObject.addEventListener('load', function() {
+      if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+      }
+    });
+    
+    // Create fallback content for browsers that don't support PDFs
+    const fallbackDiv = document.createElement('div');
+    fallbackDiv.className = 'pdf-blocked-message p-4 text-center';
+    fallbackDiv.innerHTML = `
+      <div class="mb-3">
+        <i class="fas fa-file-pdf fa-3x text-danger mb-3"></i>
+        <h5>PDF Preview Not Available</h5>
+        <p class="mb-1">Your browser doesn't support embedded PDF viewing.</p>
+        <p class="text-muted small">Please use one of the options below:</p>
+      </div>
+      <a href="/uploads/<%=file%>" target="_blank" class="btn btn-primary mb-2">
+        <i class="fas fa-external-link-alt me-1"></i> Open PDF in New Tab
+      </a>
+      <a href="/uploads/<%=file%>" download class="btn btn-outline-primary">
+        <i class="fas fa-download me-1"></i> Download PDF
+      </a>
+    `;
+    
+    pdfObject.appendChild(fallbackDiv);
+    
+    // Replace the placeholder with the PDF object
+    placeholder.parentNode.replaceChild(pdfObject, placeholder);
+  }
+  
   // JavaScript to ensure both sections are sized correctly and handle zoom functionality
   document.addEventListener('DOMContentLoaded', function() {
     // Special handling for Android WebView
@@ -3151,6 +3253,18 @@
     </script>
 
     <script>
+    // Function to check if browser supports PDF embedding
+    function supportsPdfEmbedding() {
+      // Test for PDF embedding support
+      const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+      const isChrome = navigator.userAgent.toLowerCase().indexOf('chrome') > -1 && !isAndroidWebView();
+      const isEdge = navigator.userAgent.toLowerCase().indexOf('edg') > -1;
+      const isSafari = navigator.userAgent.toLowerCase().indexOf('safari') > -1 && !isChrome;
+      
+      // Most modern browsers support PDF embedding except some mobile browsers
+      return isFirefox || isChrome || isEdge || isSafari;
+    }
+    
     // Function to detect if using Android WebView
     function isAndroidWebView() {
       const userAgent = navigator.userAgent.toLowerCase();
@@ -3326,6 +3440,22 @@
       // Set up visibility handling for PDF back button
       setupPageVisibilityHandler();
       
+      // Prevent auto-download of PDF when page loads for ALL devices, not just Android WebView
+      try {
+        // Check if we've just returned from viewing a PDF
+        const pdfViewed = sessionStorage.getItem('pdfViewed') === 'true' || 
+                         localStorage.getItem('pdfViewed') === 'true';
+        
+        if (pdfViewed) {
+          console.log("PDF was previously viewed, not auto-loading");
+          // Clear the flag after checking
+          sessionStorage.removeItem('pdfViewed');
+          localStorage.removeItem('pdfViewed');
+        }
+      } catch (e) {
+        console.warn('Error checking storage:', e);
+      }
+      
       // Special handling for Android WebView to prevent PDF auto-download
       const isWebView = isAndroidWebView();
       const pdfWasAlreadyLoaded = hasPdfAlreadyLoaded();
@@ -3379,32 +3509,58 @@
       // Check if running in Android WebView
       const isWebView = isAndroidWebView();
       
+      // Configure "Load Question Paper" button in modal to use PDF.js viewer
+      const loadModalPdfBtn = document.getElementById('loadModalPdf');
+      if (loadModalPdfBtn) {
+        loadModalPdfBtn.addEventListener('click', function() {
+          // Hide loading controls
+          document.getElementById('modalPdfViewerControls').style.display = 'none';
+          // Show PDF.js link
+          document.getElementById('pdfJsViewerLink').style.display = 'block';
+          
+          // Create iframe to PDF.js viewer
+          const timestamp = new Date().getTime();
+          const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}&t=${timestamp}`;
+          
+          const iframe = document.createElement('iframe');
+          iframe.src = pdfJsViewerUrl;
+          iframe.style.width = '100%';
+          iframe.style.height = '80vh';
+          iframe.style.border = 'none';
+          
+          const modalPdfContainer = document.getElementById('modalPdfContainer');
+          modalPdfContainer.innerHTML = '';
+          modalPdfContainer.appendChild(iframe);
+          
+          // Hide loading indicator
+          document.getElementById('modalPdfLoadingIndicator').style.display = 'none';
+        });
+      }
+      
       // Handle button click to open PDF directly in a new tab instead of opening modal
       openQuestionPaperBtn.addEventListener('click', function(e) {
         e.preventDefault(); // Prevent default behavior
 
-        // Set a flag in sessionStorage to indicate PDF was opened
-        // This will help us handle the back button behavior
-        sessionStorage.setItem('pdfOpened', 'true');
-        sessionStorage.setItem('pdfOpenedTime', new Date().getTime());
+        // Set flags in sessionStorage to indicate PDF was opened and prevent auto-download on return
+        try {
+          sessionStorage.setItem('pdfOpened', 'true');
+          sessionStorage.setItem('pdfOpenedTime', new Date().getTime());
+          sessionStorage.setItem('preventPdfDownload', 'true');
+          sessionStorage.setItem('pdfViewed', 'true');
+          localStorage.setItem('pdfViewed', 'true'); // Fallback for some WebView implementations
+          // Also store the PDF filename to know which one was viewed
+          sessionStorage.setItem('lastViewedPdf', pdfFile);
+        } catch(e) {
+          console.warn('Could not set storage markers:', e);
+        }
         
         // Always use PDF.js for WebView to ensure best compatibility and no downloads
-        if (isWebView) {
-          console.log("Using PDF.js viewer for Android WebView");
+        if (isWebView || !supportsPdfEmbedding()) {
+          console.log("Using PDF.js viewer for best compatibility");
           // PDF.js viewer URL with a timestamp to prevent caching on Android WebView
           const timestamp = new Date().getTime();
           const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}&t=${timestamp}`;
           
-          // Mark that this PDF should not be auto-downloaded when returning
-          try {
-            sessionStorage.setItem('preventPdfDownload', 'true');
-            sessionStorage.setItem('pdfViewed', 'true');
-            localStorage.setItem('pdfViewed', 'true'); // Fallback for some WebView implementations
-            // Also store the PDF filename to know which one was viewed
-            sessionStorage.setItem('lastViewedPdf', pdfFile);
-          } catch(e) {
-            console.warn('Could not set storage markers:', e);
-          }
           
           // Open in a way that works best with Android WebView
           try {

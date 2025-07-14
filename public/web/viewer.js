@@ -131,16 +131,22 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   
   function applyZoom() {
-    const page = document.querySelector('.page');
-    if (page) {
-      page.style.transform = `scale(${window.currentScale})`;
-      page.style.transformOrigin = 'top left';
+    const pages = document.querySelectorAll('.page');
+    
+    if (pages.length > 0) {
+      pages.forEach(page => {
+        page.style.transform = `scale(${window.currentScale})`;
+        page.style.transformOrigin = 'top left';
+      });
       
-      // Center the content after zooming
+      // Center the content after zooming (focus on visible page)
       const container = document.getElementById('viewerContainer');
       if (container) {
+        // Get the currently visible page
+        const visiblePage = document.querySelector('.page[style*="display: block"]') || pages[0];
+        
         // Adjust container scroll to keep content centered
-        const pageRect = page.getBoundingClientRect();
+        const pageRect = visiblePage.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         
         const centerX = pageRect.width / 2;
@@ -192,63 +198,204 @@ function loadPDF(url) {
           pageInfo.textContent = 'Pages: ' + numPages;
         }
         
-        // Get the first page
-        return pdfDocument.getPage(1).then(function(page) {
-          const scale = 1.0;
-          const viewport = page.getViewport({ scale });
-          
-          // Prepare canvas
-          const container = document.getElementById("viewerContainer");
-          if (!container) {
-            throw new Error("Viewer container not found");
+        // Get the container for all pages
+        const container = document.getElementById("viewerContainer");
+        if (!container) {
+          throw new Error("Viewer container not found");
+        }
+        
+        const pdfViewer = document.createElement("div");
+        pdfViewer.className = "pdfViewer";
+        container.appendChild(pdfViewer);
+
+        // Create page navigation controls
+        const pageNav = document.createElement("div");
+        pageNav.className = "page-nav";
+        pageNav.style.position = "fixed";
+        pageNav.style.bottom = "20px";
+        pageNav.style.left = "50%";
+        pageNav.style.transform = "translateX(-50%)";
+        pageNav.style.zIndex = "100";
+        pageNav.style.backgroundColor = "rgba(25, 118, 210, 0.9)";
+        pageNav.style.borderRadius = "8px";
+        pageNav.style.padding = "8px 15px";
+        pageNav.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
+        pageNav.style.display = "flex";
+        pageNav.style.alignItems = "center";
+        pageNav.style.gap = "10px";
+        
+        const prevBtn = document.createElement("button");
+        prevBtn.textContent = "← Previous";
+        prevBtn.className = "btn";
+        prevBtn.disabled = true;
+        
+        const nextBtn = document.createElement("button");
+        nextBtn.textContent = "Next →";
+        nextBtn.className = "btn";
+        nextBtn.disabled = numPages <= 1;
+        
+        const pageCounter = document.createElement("span");
+        pageCounter.style.color = "white";
+        pageCounter.textContent = "Page 1 of " + numPages;
+        
+        pageNav.appendChild(prevBtn);
+        pageNav.appendChild(pageCounter);
+        pageNav.appendChild(nextBtn);
+        
+        container.parentNode.appendChild(pageNav);
+        
+        let currentPage = 1;
+        // Store all rendered pages
+        const renderedPages = {};
+        
+        // Preload the first few pages for better user experience
+        const pagesToPreload = Math.min(numPages, 3);
+        const preloadPromises = [];
+        for (let i = 1; i <= pagesToPreload; i++) {
+          preloadPromises.push(renderPage(i, i === 1));
+        }
+        
+        // Wait for preload to complete
+        Promise.all(preloadPromises).then(() => {
+          console.log(`Preloaded first ${pagesToPreload} pages`);
+        }).catch(error => {
+          console.error("Error preloading pages:", error);
+        });
+        
+        // Function to render a specific page
+        function renderPage(pageNum, shouldDisplay = true) {
+          if (pageNum < 1 || pageNum > numPages) {
+            return Promise.reject(new Error("Invalid page number"));
           }
           
-          const pdfViewer = document.createElement("div");
-          pdfViewer.className = "pdfViewer";
-          container.appendChild(pdfViewer);
+          currentPage = pageNum;
           
-          // Create page container
-          const pageContainer = document.createElement("div");
-          pageContainer.className = "page";
-          pageContainer.style.width = viewport.width + "px";
-          pageContainer.style.height = viewport.height + "px";
-          pdfViewer.appendChild(pageContainer);
+          // Update page counter
+          pageCounter.textContent = `Page ${pageNum} of ${numPages}`;
           
-          // Create canvas
-          const canvas = document.createElement("canvas");
-          canvas.className = "pageCanvas";
-          pageContainer.appendChild(canvas);
+          // Update button states
+          prevBtn.disabled = pageNum <= 1;
+          nextBtn.disabled = pageNum >= numPages;
           
-          const context = canvas.getContext("2d");
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          
-          // Store the scale value for zoom controls
-          window.currentScale = 1.0;
-          
-          // Render PDF page
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport,
-          };
-          
-          page.render(renderContext).promise.then(function() {
-            // First page rendered
-            console.log("Page rendered successfully");
-            
-            // Handle Android WebView specific optimizations
-            if (navigator.userAgent.indexOf('wv') > -1 || 
-                (navigator.userAgent.indexOf('Android') > -1 && navigator.userAgent.indexOf('Chrome') === -1)) {
-              // Force redraw in Android WebView to prevent rendering issues
-              setTimeout(function() {
-                canvas.style.opacity = '0.99';
-                setTimeout(function() {
-                  canvas.style.opacity = '1';
-                }, 10);
-              }, 100);
+          // If page is already rendered, just show or hide it
+          if (renderedPages[pageNum]) {
+            // Hide all pages
+            for (let key in renderedPages) {
+              renderedPages[key].style.display = 'none';
             }
+            
+            // Show only current page if requested
+            if (shouldDisplay) {
+              renderedPages[pageNum].style.display = 'block';
+            }
+            
+            return Promise.resolve();
+          }
+          
+          return pdfDocument.getPage(pageNum).then(function(page) {
+            const scale = window.currentScale || 1.0;
+            const viewport = page.getViewport({ scale });
+            
+            // Create page container
+            const pageContainer = document.createElement("div");
+            pageContainer.className = "page";
+            pageContainer.id = `page-${pageNum}`;
+            pageContainer.style.width = viewport.width + "px";
+            pageContainer.style.height = viewport.height + "px";
+            pageContainer.dataset.pageNumber = pageNum;
+            pageContainer.style.marginBottom = "20px";
+            pageContainer.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.1)";
+            pageContainer.style.backgroundColor = "#fff";
+            
+            // Show or hide based on whether this is the current page
+            pageContainer.style.display = shouldDisplay ? 'block' : 'none';
+            
+            // Hide all other pages if this one should be displayed
+            if (shouldDisplay) {
+              for (let key in renderedPages) {
+                renderedPages[key].style.display = 'none';
+              }
+            }
+            
+            pdfViewer.appendChild(pageContainer);
+            renderedPages[pageNum] = pageContainer;
+            
+            // Create canvas
+            const canvas = document.createElement("canvas");
+            canvas.className = "pageCanvas";
+            pageContainer.appendChild(canvas);
+            
+            const context = canvas.getContext("2d");
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            // Render PDF page
+            const renderContext = {
+              canvasContext: context,
+              viewport: viewport,
+            };
+            
+            return page.render(renderContext).promise.then(function() {
+              console.log(`Page ${pageNum} rendered successfully`);
+              
+              // Add a page label
+              const pageLabel = document.createElement('div');
+              pageLabel.textContent = `Page ${pageNum}`;
+              pageLabel.style.position = 'absolute';
+              pageLabel.style.bottom = '5px';
+              pageLabel.style.right = '10px';
+              pageLabel.style.background = 'rgba(0,0,0,0.5)';
+              pageLabel.style.color = 'white';
+              pageLabel.style.padding = '2px 8px';
+              pageLabel.style.borderRadius = '4px';
+              pageLabel.style.fontSize = '12px';
+              pageContainer.appendChild(pageLabel);
+              
+              // Handle Android WebView specific optimizations
+              if (navigator.userAgent.indexOf('wv') > -1 || 
+                  (navigator.userAgent.indexOf('Android') > -1 && navigator.userAgent.indexOf('Chrome') === -1)) {
+                // Force redraw in Android WebView to prevent rendering issues
+                setTimeout(function() {
+                  canvas.style.opacity = '0.99';
+                  setTimeout(function() {
+                    canvas.style.opacity = '1';
+                  }, 10);
+                }, 100);
+              }
+            });
           });
+        }
+        
+        // Add event listeners for page navigation
+        prevBtn.addEventListener("click", function() {
+          if (currentPage > 1) {
+            renderPage(currentPage - 1);
+          }
         });
+        
+        nextBtn.addEventListener("click", function() {
+          if (currentPage < numPages) {
+            renderPage(currentPage + 1);
+          }
+        });
+        
+        // Add keyboard navigation
+        document.addEventListener("keydown", function(e) {
+          if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+            if (currentPage < numPages) {
+              renderPage(currentPage + 1);
+            }
+            e.preventDefault();
+          } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+            if (currentPage > 1) {
+              renderPage(currentPage - 1);
+            }
+            e.preventDefault();
+          }
+        });
+        
+        // Render first page initially
+        return renderPage(1);
       })
       .catch(function(error) {
         // PDF failed to load
