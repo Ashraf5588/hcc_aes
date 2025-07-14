@@ -345,13 +345,14 @@
           transition: transform 0.2s, box-shadow 0.2s;
           width: 65px;
           height: 65px;
-          font-size: 22px;
+          font-size: 20px;
           display: flex;
           align-items: center;
           justify-content: center;
           background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
           border: 2px solid rgba(255, 255, 255, 0.8);
           animation: pulse 2s infinite;
+          z-index: 1060; /* Ensure it stays on top of other elements */
         }
         
         #mobilePdfButton .btn:active {
@@ -1839,9 +1840,9 @@
         <div class="d-block d-md-none" id="mobilePdfButton">
           <button class="btn btn-primary rounded-circle shadow pulse-animation" id="openQuestionPaperBtn" 
             aria-label="Open Question Paper" title="Open Question Paper in New Tab">
-            <i class="fa-solid fa-file-pdf" style="color: #ffffff;"></i>
+            <i class="fa-solid fa-external-link-alt" style="color: #ffffff;"></i>
           </button>
-          <span class="btn-label small">Open Question Paper</span>
+          <span class="btn-label small">View Paper</span>
         </div>
         
         <!-- Modal for displaying question paper on mobile without page reload -->
@@ -3162,6 +3163,46 @@
       const iframe = document.getElementById('questionPaperObject');
       const container = document.querySelector('.pdf-container');
       
+      // Check if we're returning from a PDF view within the last 10 seconds
+      const pdfOpened = sessionStorage.getItem('pdfOpened');
+      const pdfOpenedTime = parseInt(sessionStorage.getItem('pdfOpenedTime') || '0');
+      const currentTime = new Date().getTime();
+      const isReturningFromPdf = pdfOpened === 'true' && (currentTime - pdfOpenedTime < 10000);
+      
+      if (isReturningFromPdf) {
+        console.log('Detected return from PDF view, preventing automatic PDF loading');
+        // Clear the flag since we've handled it
+        sessionStorage.removeItem('pdfOpened');
+        
+        // If we're in an iframe or Android WebView, don't auto-load the PDF
+        if (window !== window.parent || /wv/.test(navigator.userAgent.toLowerCase())) {
+          if (container) {
+            // Replace with a button to load PDF if needed
+            const loadButton = document.createElement('div');
+            loadButton.className = 'text-center p-3';
+            loadButton.innerHTML = `
+              <p class="mb-2">PDF was already viewed.</p>
+              <button id="reload-pdf" class="btn btn-outline-primary">
+                <i class="fas fa-sync me-2"></i> Load PDF Again
+              </button>
+            `;
+            
+            // Only replace content if this is the desktop PDF container (not modal)
+            if (!container.closest('#questionPaperModal')) {
+              container.innerHTML = '';
+              container.appendChild(loadButton);
+              
+              // Add event listener to reload PDF if needed
+              document.getElementById('reload-pdf').addEventListener('click', function() {
+                sessionStorage.removeItem('pdfOpened');
+                location.reload();
+              });
+            }
+          }
+          return;
+        }
+      }
+      
       if (!iframe || !container) return;
       
       // For Android WebView, use different approach to display PDFs
@@ -3191,9 +3232,79 @@
       }
     }
     
+    // Handle page visibility changes to manage back button behavior
+    function setupPageVisibilityHandler() {
+      // Handle browser visibility changes
+      let wasHidden = false;
+      
+      document.addEventListener('visibilitychange', function() {
+        // When page becomes visible again after being hidden (potential back navigation)
+        if (document.visibilityState === 'visible' && wasHidden) {
+          wasHidden = false;
+          
+          // If returning within 5 seconds of opening PDF
+          const pdfOpened = sessionStorage.getItem('pdfOpened');
+          const pdfOpenedTime = parseInt(sessionStorage.getItem('pdfOpenedTime') || '0');
+          const currentTime = new Date().getTime();
+          
+          if (pdfOpened === 'true' && (currentTime - pdfOpenedTime < 5000)) {
+            console.log('Page became visible again after opening PDF, preventing reload');
+            // Set a flag to prevent reload
+            sessionStorage.setItem('preventReload', 'true');
+          }
+        }
+        
+        if (document.visibilityState === 'hidden') {
+          wasHidden = true;
+        }
+      });
+      
+      // Handle window focus changes
+      window.addEventListener('focus', function() {
+        // When window regains focus (potential return from PDF)
+        const pdfOpened = sessionStorage.getItem('pdfOpened');
+        const pdfOpenedTime = parseInt(sessionStorage.getItem('pdfOpenedTime') || '0');
+        const currentTime = new Date().getTime();
+        
+        if (pdfOpened === 'true' && (currentTime - pdfOpenedTime < 5000)) {
+          console.log('Window refocused after opening PDF, disabling auto-reload');
+          // Mark as handled
+          sessionStorage.setItem('pdfOpened', 'handled');
+        }
+      });
+      
+      // Handle Android back button
+      window.addEventListener('popstate', function(e) {
+        // If returning from PDF view
+        const pdfOpened = sessionStorage.getItem('pdfOpened');
+        if (pdfOpened === 'true' || pdfOpened === 'handled') {
+          console.log('Popstate detected after PDF view');
+          // Prevent default behavior on Android WebView
+          if (/wv/.test(navigator.userAgent.toLowerCase())) {
+            e.preventDefault();
+            sessionStorage.removeItem('pdfOpened');
+            
+            // Prevent reload without refreshing the page
+            history.pushState(null, '', window.location.href);
+          }
+        }
+      });
+    }
+    
     // Call the PDF display handler when page loads
     document.addEventListener('DOMContentLoaded', function() {
-      handlePDFDisplay();
+      // Set up visibility handling for PDF back button
+      setupPageVisibilityHandler();
+      
+      // Check if we should prevent automatic PDF loading
+      const preventReload = sessionStorage.getItem('preventReload');
+      if (preventReload === 'true') {
+        console.log('Preventing PDF reload after returning from PDF view');
+        sessionStorage.removeItem('preventReload');
+      } else {
+        handlePDFDisplay();
+      }
+      
       setupMobileQuestionPaperModal();
       // other existing code
     });
@@ -3214,7 +3325,14 @@
       const isWebView = isAndroidWebView();
       
       // Handle button click to open PDF directly in a new tab instead of opening modal
-      openQuestionPaperBtn.addEventListener('click', function() {
+      openQuestionPaperBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // Prevent default behavior
+
+        // Set a flag in sessionStorage to indicate PDF was opened
+        // This will help us handle the back button behavior
+        sessionStorage.setItem('pdfOpened', 'true');
+        sessionStorage.setItem('pdfOpenedTime', new Date().getTime());
+        
         // Open PDF directly in a new tab
         const isPDFSupported = () => {
           const isChrome = navigator.userAgent.indexOf("Chrome") > -1;
@@ -3230,7 +3348,21 @@
         if (isWebView || !isPDFSupported()) {
           const pdfUrl = encodeURIComponent(window.location.origin + '/uploads/' + pdfFile);
           const googleViewerUrl = `https://docs.google.com/viewer?url=${pdfUrl}&embedded=false`;
-          window.open(googleViewerUrl, '_blank');
+          // Use a different way to open on Android WebView to prevent refresh
+          if (navigator.userAgent.indexOf('wv') > -1) {
+            // Using location.href with a timeout gives user time to go back without refresh
+            setTimeout(() => {
+              const newTab = window.open('about:blank', '_blank');
+              if (newTab) {
+                newTab.location.href = googleViewerUrl;
+              } else {
+                // Fallback if popup is blocked
+                window.location.href = googleViewerUrl;
+              }
+            }, 100);
+          } else {
+            window.open(googleViewerUrl, '_blank');
+          }
         } else {
           // Direct PDF link for browsers that support it
           window.open('/uploads/' + pdfFile, '_blank');
