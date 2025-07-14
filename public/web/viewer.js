@@ -39,18 +39,38 @@ document.addEventListener("DOMContentLoaded", function() {
   const loadingBar = document.getElementById('loadingBar');
   if (loadingBar) {
     loadingBar.classList.add('indeterminate');
-  }
-  
-  // For Android WebView, add a note
-  if (navigator.userAgent.indexOf('wv') > -1 || 
-      (navigator.userAgent.indexOf('Android') > -1 && navigator.userAgent.indexOf('Chrome') === -1)) {
-    const webViewNote = document.createElement('div');
-    webViewNote.className = 'webview-note';
-    webViewNote.innerHTML = '<div style="position: fixed; top: 0; left: 0; right: 0; background: rgba(33, 150, 243, 0.9); color: white; padding: 5px 10px; font-size: 12px; text-align: center; z-index: 1000;">Android WebView Optimized Mode</div>';
-    document.body.appendChild(webViewNote);
-    
-    // Add class to body for Android WebView specific styling
-    document.body.classList.add('android-webview');
+  }      // For Android WebView, add a note and optimizations
+      if (navigator.userAgent.indexOf('wv') > -1 || 
+          (navigator.userAgent.indexOf('Android') > -1 && navigator.userAgent.indexOf('Chrome') === -1)) {
+        const webViewNote = document.createElement('div');
+        webViewNote.className = 'webview-note';
+        webViewNote.innerHTML = '<div style="position: fixed; top: 0; left: 0; right: 0; background: rgba(33, 150, 243, 0.9); color: white; padding: 5px 10px; font-size: 12px; text-align: center; z-index: 1000;">Android WebView Optimized Mode</div>';
+        document.body.appendChild(webViewNote);
+        
+        // Add class to body for Android WebView specific styling
+        document.body.classList.add('android-webview');
+        
+        // Add back button for easier navigation in WebView
+        const backButton = document.createElement('div');
+        backButton.className = 'webview-back-button';
+        backButton.innerHTML = `
+          <button style="position: fixed; top: 30px; left: 10px; z-index: 1001; 
+                         background: rgba(255,255,255,0.9); border: none; border-radius: 50%; 
+                         width: 40px; height: 40px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+            <span style="font-size: 24px;">&larr;</span>
+          </button>
+        `;
+        document.body.appendChild(backButton);
+        
+        // Add event listener to back button
+        backButton.querySelector('button').addEventListener('click', function() {
+          history.back();
+        });
+        
+        // Force hardware acceleration to improve rendering
+        document.body.style.transform = 'translateZ(0)';
+        document.body.style.backfaceVisibility = 'hidden';
+        document.body.style.perspective = '1000px';
   }
   
   try {

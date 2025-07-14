@@ -3158,10 +3158,21 @@
              (/android/.test(userAgent) && /chrome/.test(userAgent) && !(/chrome\/[\d.]/.test(userAgent)));
     }
     
+    // Check if PDF was already loaded once in this session - prevents multiple downloads
+    function hasPdfAlreadyLoaded() {
+      // We'll use localStorage for a more persistent flag across page refreshes
+      return localStorage.getItem('pdfAlreadyLoadedFor_<%= file %>') === 'true';
+    }
+    
     // Function to modify PDF loading to prevent download prompts
     function handlePDFDisplay() {
       const iframe = document.getElementById('questionPaperObject');
       const container = document.querySelector('.pdf-container');
+      
+      // Mark that this PDF was loaded in this session
+      if (isAndroidWebView()) {
+        localStorage.setItem('pdfAlreadyLoadedFor_<%= file %>', 'true');
+      }
       
       // Check if we're returning from a PDF view within the last 10 seconds
       const pdfOpened = sessionStorage.getItem('pdfOpened');
@@ -3315,13 +3326,38 @@
       // Set up visibility handling for PDF back button
       setupPageVisibilityHandler();
       
-      // Check if we should prevent automatic PDF loading
-      const preventReload = sessionStorage.getItem('preventReload');
-      if (preventReload === 'true') {
-        console.log('Preventing PDF reload after returning from PDF view');
-        sessionStorage.removeItem('preventReload');
+      // Special handling for Android WebView to prevent PDF auto-download
+      const isWebView = isAndroidWebView();
+      const pdfWasAlreadyLoaded = hasPdfAlreadyLoaded();
+      
+      // For Android WebView, only load the PDF on first visit, not after returning
+      if (isWebView && pdfWasAlreadyLoaded) {
+        console.log('Android WebView: PDF was previously loaded, preventing auto-download');
+        
+        // Remove any auto-loading PDF elements
+        const pdfObjects = document.querySelectorAll('object[data*=".pdf"], embed[src*=".pdf"], iframe[src*=".pdf"]');
+        pdfObjects.forEach(obj => {
+          // Replace with a placeholder
+          const parent = obj.parentElement;
+          if (parent) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'pdf-placeholder p-4 text-center bg-light';
+            placeholder.innerHTML = `
+              <p><i class="fas fa-file-pdf fa-2x text-primary mb-3"></i></p>
+              <p>Click the button below to view the question paper</p>
+            `;
+            parent.replaceChild(placeholder, obj);
+          }
+        });
       } else {
-        handlePDFDisplay();
+        // Check if we should prevent automatic PDF loading
+        const preventReload = sessionStorage.getItem('preventReload');
+        if (preventReload === 'true') {
+          console.log('Preventing PDF reload after returning from PDF view');
+          sessionStorage.removeItem('preventReload');
+        } else {
+          handlePDFDisplay();
+        }
       }
       
       setupMobileQuestionPaperModal();
@@ -3352,7 +3388,33 @@
         sessionStorage.setItem('pdfOpened', 'true');
         sessionStorage.setItem('pdfOpenedTime', new Date().getTime());
         
-        // Open PDF directly in a new tab
+        // Always use PDF.js for WebView to ensure best compatibility and no downloads
+        if (isWebView) {
+          console.log("Using PDF.js viewer for Android WebView");
+          // PDF.js viewer URL with a timestamp to prevent caching on Android WebView
+          const timestamp = new Date().getTime();
+          const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}&t=${timestamp}`;
+          
+          // Mark that this PDF should not be auto-downloaded
+          sessionStorage.setItem('preventPdfDownload', 'true');
+          
+          // Open in a way that works best with Android WebView
+          try {
+            // Try window.open first - this works better in many WebView implementations
+            const newWindow = window.open(pdfJsViewerUrl, '_blank');
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+              // If window.open failed, try location.href as fallback
+              window.location.href = pdfJsViewerUrl;
+            }
+          } catch (e) {
+            // If all else fails, try direct assignment to location
+            console.error("Error opening PDF.js viewer:", e);
+            window.location.href = pdfJsViewerUrl;
+          }
+          return;
+        }
+        
+        // For regular browsers, check PDF support
         const isPDFSupported = () => {
           const isChrome = navigator.userAgent.indexOf("Chrome") > -1;
           const isFirefox = navigator.userAgent.indexOf("Firefox") > -1;
@@ -3363,9 +3425,9 @@
           return isChrome || isFirefox || isSafari || isEdge;
         };
 
-        // If this is an Android WebView or PDF support might be limited, use PDF.js viewer
-        if (isWebView || !isPDFSupported()) {
-          // PDF.js viewer URL with full path to PDF - works on Android WebView without downloading
+        // For browsers with limited PDF support, use PDF.js viewer
+        if (!isPDFSupported()) {
+          // PDF.js viewer URL with full path to PDF - works without downloading
           const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}`;
           
           // If user explicitly requested to avoid downloading PDFs

@@ -16,6 +16,19 @@
   <link rel="stylesheet" href="viewer.css">
   <link rel="resource" type="application/l10n" href="locale/locale.properties">
   <script src="build/pdf.js"></script>
+  <script>
+    // Ensure PDF.js is loaded and configured properly
+    if (typeof pdfjsLib === 'undefined') {
+      console.error('PDF.js library not loaded!');
+      document.write('<div style="color: red; padding: 20px;">Error: PDF.js library failed to load</div>');
+    } else {
+      // Set worker path for proper loading
+      pdfjsLib.GlobalWorkerOptions = pdfjsLib.GlobalWorkerOptions || {};
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'build/pdf.worker.js';
+      
+      console.log('PDF.js library loaded successfully');
+    }
+  </script>
 </head>
 
 <body tabindex="1">
