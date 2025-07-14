@@ -3395,8 +3395,16 @@
           const timestamp = new Date().getTime();
           const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}&t=${timestamp}`;
           
-          // Mark that this PDF should not be auto-downloaded
-          sessionStorage.setItem('preventPdfDownload', 'true');
+          // Mark that this PDF should not be auto-downloaded when returning
+          try {
+            sessionStorage.setItem('preventPdfDownload', 'true');
+            sessionStorage.setItem('pdfViewed', 'true');
+            localStorage.setItem('pdfViewed', 'true'); // Fallback for some WebView implementations
+            // Also store the PDF filename to know which one was viewed
+            sessionStorage.setItem('lastViewedPdf', pdfFile);
+          } catch(e) {
+            console.warn('Could not set storage markers:', e);
+          }
           
           // Open in a way that works best with Android WebView
           try {
@@ -3428,10 +3436,18 @@
         // For browsers with limited PDF support, use PDF.js viewer
         if (!isPDFSupported()) {
           // PDF.js viewer URL with full path to PDF - works without downloading
-          const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}`;
+          const timestamp = new Date().getTime(); // Add timestamp to prevent caching issues
+          const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}&t=${timestamp}`;
           
-          // If user explicitly requested to avoid downloading PDFs
-          sessionStorage.setItem('preventPdfDownload', 'true');
+          // Save markers to prevent auto-downloads when returning
+          try {
+            sessionStorage.setItem('preventPdfDownload', 'true');
+            sessionStorage.setItem('pdfViewed', 'true');
+            localStorage.setItem('pdfViewed', 'true'); // Fallback for some browser implementations
+            sessionStorage.setItem('lastViewedPdf', pdfFile);
+          } catch(e) {
+            console.warn('Could not set storage markers:', e);
+          }
           
           console.log('Opening PDF in PDF.js viewer:', pdfJsViewerUrl);
           

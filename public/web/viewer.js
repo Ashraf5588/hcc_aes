@@ -35,6 +35,24 @@ document.addEventListener("DOMContentLoaded", function() {
   const fileName = pdfUrl.split('/').pop();
   document.title = fileName + ' - PDF Viewer';
   
+  // Configure back button
+  const backButton = document.getElementById('backButton');
+  if (backButton) {
+    backButton.addEventListener('click', function() {
+      // Set a marker to prevent auto-download when returning to main page
+      try {
+        sessionStorage.setItem('pdfViewed', 'true');
+        // Also set localStorage as a fallback for some WebView instances
+        localStorage.setItem('pdfViewed', 'true');
+      } catch (e) {
+        console.warn('Could not set storage:', e);
+      }
+      
+      // Go back to previous page
+      history.back();
+    });
+  }
+  
   // Display loading bar
   const loadingBar = document.getElementById('loadingBar');
   if (loadingBar) {
@@ -96,18 +114,18 @@ document.addEventListener("DOMContentLoaded", function() {
   // Set up zoom controls
   const zoomIn = document.getElementById('zoomIn');
   const zoomOut = document.getElementById('zoomOut');
-  let currentScale = 1.0;
+  window.currentScale = 1.0;
   
   if (zoomIn) {
     zoomIn.addEventListener('click', function() {
-      currentScale = Math.min(currentScale + 0.2, 3.0);
+      window.currentScale = Math.min(window.currentScale + 0.2, 3.0);
       applyZoom();
     });
   }
   
   if (zoomOut) {
     zoomOut.addEventListener('click', function() {
-      currentScale = Math.max(currentScale - 0.2, 0.5);
+      window.currentScale = Math.max(window.currentScale - 0.2, 0.5);
       applyZoom();
     });
   }
@@ -115,104 +133,169 @@ document.addEventListener("DOMContentLoaded", function() {
   function applyZoom() {
     const page = document.querySelector('.page');
     if (page) {
-      page.style.transform = `scale(${currentScale})`;
+      page.style.transform = `scale(${window.currentScale})`;
       page.style.transformOrigin = 'top left';
+      
+      // Center the content after zooming
+      const container = document.getElementById('viewerContainer');
+      if (container) {
+        // Adjust container scroll to keep content centered
+        const pageRect = page.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        
+        const centerX = pageRect.width / 2;
+        const centerY = pageRect.height / 2;
+        
+        // Only adjust if zoomed in
+        if (window.currentScale > 1.0) {
+          container.scrollLeft = (centerX * window.currentScale) - (containerRect.width / 2);
+          container.scrollTop = (centerY * window.currentScale) - (containerRect.height / 2);
+        }
+      }
+      
+      // Update page info with zoom level
+      const pageInfo = document.getElementById('pageInfo');
+      if (pageInfo) {
+        const pagesText = pageInfo.textContent.split('|')[0].trim();
+        pageInfo.textContent = `${pagesText} | Zoom: ${Math.round(window.currentScale * 100)}%`;
+      }
     }
   }
 });
 
 function loadPDF(url) {
   // Set up PDF.js
-  const loadingTask = pdfjsLib.getDocument({
-    url: url,
-    // Remove cMapUrl as it's not needed for our simplified version
-    // cMapUrl: "../web/cmaps/",
-    // cMapPacked: true,
-  });
-  
-  loadingTask.promise
-    .then(function(pdfDocument) {
-      // PDF loaded successfully
-      document.getElementById("loadingBar").classList.remove("indeterminate");
-      document.getElementById("loadingBar").style.display = "none";
-      
-      // Update page info
-      const numPages = pdfDocument.numPages;
-      const pageInfo = document.getElementById('pageInfo');
-      if (pageInfo) {
-        pageInfo.textContent = 'Pages: ' + numPages;
-      }
-      
-      // Get the first page
-      return pdfDocument.getPage(1).then(function(page) {
-        const scale = 1.0;
-        const viewport = page.getViewport({ scale });
-        
-        // Prepare canvas
-        const container = document.getElementById("viewerContainer");
-        const pdfViewer = document.createElement("div");
-        pdfViewer.className = "pdfViewer";
-        container.appendChild(pdfViewer);
-        
-        // Create page container
-        const pageContainer = document.createElement("div");
-        pageContainer.className = "page";
-        pageContainer.style.width = viewport.width + "px";
-        pageContainer.style.height = viewport.height + "px";
-        pdfViewer.appendChild(pageContainer);
-        
-        // Create canvas
-        const canvas = document.createElement("canvas");
-        canvas.className = "pageCanvas";
-        pageContainer.appendChild(canvas);
-        
-        const context = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        
-        // Render PDF page
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport,
-        };
-        
-        page.render(renderContext).promise.then(function() {
-          // First page rendered
-          console.log("Page rendered successfully");
-          
-          // Handle Android WebView specific optimizations
-          if (navigator.userAgent.indexOf('wv') > -1) {
-            // Force redraw in Android WebView to prevent rendering issues
-            setTimeout(function() {
-              canvas.style.opacity = '0.99';
-              setTimeout(function() {
-                canvas.style.opacity = '1';
-              }, 10);
-            }, 100);
-          }
-        });
-      });
-    })
-    .catch(function(error) {
-      // PDF failed to load
-      showError(error.message || "Failed to load PDF");
+  try {
+    if (typeof pdfjsLib === 'undefined') {
+      throw new Error("PDF.js library not loaded properly");
+    }
+    
+    const loadingTask = pdfjsLib.getDocument({
+      url: url,
+      cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/cmaps/',
+      cMapPacked: true,
     });
+    
+    loadingTask.promise
+      .then(function(pdfDocument) {
+        // PDF loaded successfully
+        const loadingBar = document.getElementById("loadingBar");
+        if (loadingBar) {
+          loadingBar.classList.remove("indeterminate");
+          loadingBar.style.display = "none";
+        }
+        
+        // Update page info
+        const numPages = pdfDocument.numPages;
+        const pageInfo = document.getElementById('pageInfo');
+        if (pageInfo) {
+          pageInfo.textContent = 'Pages: ' + numPages;
+        }
+        
+        // Get the first page
+        return pdfDocument.getPage(1).then(function(page) {
+          const scale = 1.0;
+          const viewport = page.getViewport({ scale });
+          
+          // Prepare canvas
+          const container = document.getElementById("viewerContainer");
+          if (!container) {
+            throw new Error("Viewer container not found");
+          }
+          
+          const pdfViewer = document.createElement("div");
+          pdfViewer.className = "pdfViewer";
+          container.appendChild(pdfViewer);
+          
+          // Create page container
+          const pageContainer = document.createElement("div");
+          pageContainer.className = "page";
+          pageContainer.style.width = viewport.width + "px";
+          pageContainer.style.height = viewport.height + "px";
+          pdfViewer.appendChild(pageContainer);
+          
+          // Create canvas
+          const canvas = document.createElement("canvas");
+          canvas.className = "pageCanvas";
+          pageContainer.appendChild(canvas);
+          
+          const context = canvas.getContext("2d");
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          // Store the scale value for zoom controls
+          window.currentScale = 1.0;
+          
+          // Render PDF page
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport,
+          };
+          
+          page.render(renderContext).promise.then(function() {
+            // First page rendered
+            console.log("Page rendered successfully");
+            
+            // Handle Android WebView specific optimizations
+            if (navigator.userAgent.indexOf('wv') > -1 || 
+                (navigator.userAgent.indexOf('Android') > -1 && navigator.userAgent.indexOf('Chrome') === -1)) {
+              // Force redraw in Android WebView to prevent rendering issues
+              setTimeout(function() {
+                canvas.style.opacity = '0.99';
+                setTimeout(function() {
+                  canvas.style.opacity = '1';
+                }, 10);
+              }, 100);
+            }
+          });
+        });
+      })
+      .catch(function(error) {
+        // PDF failed to load
+        showError(error.message || "Failed to load PDF");
+      });
+  } catch (error) {
+    // Handle any errors that occur during setup
+    showError("PDF.js initialization error: " + error.message);
+  }
 }
 
 function showError(message) {
-  document.getElementById("loadingBar").style.display = "none";
+  // Hide loading bar
+  const loadingBar = document.getElementById("loadingBar");
+  if (loadingBar) {
+    loadingBar.style.display = "none";
+  }
   
+  // Show error message
   const errorWrapper = document.getElementById("errorWrapper");
-  errorWrapper.style.display = "block";
+  if (errorWrapper) {
+    errorWrapper.style.display = "block";
+    
+    const errorMessage = document.getElementById("errorMessage");
+    if (errorMessage) {
+      errorMessage.textContent = message;
+    }
+    
+    // Set up download button for fallback
+    const errorDownloadBtn = document.getElementById('errorDownload');
+    if (errorDownloadBtn) {
+      const pdfUrl = new URLSearchParams(window.location.search).get('file');
+      if (pdfUrl) {
+        errorDownloadBtn.addEventListener('click', function() {
+          window.open(pdfUrl, '_blank');
+        });
+      } else {
+        errorDownloadBtn.style.display = 'none';
+      }
+    }
+  }
   
-  const errorMessage = document.getElementById("errorMessage");
-  errorMessage.textContent = message;
-  
-  console.error(message);
+  console.error("PDF Viewer Error:", message);
   
   // Also provide a download link as fallback
   const pdfUrl = new URLSearchParams(window.location.search).get('file');
-  if (pdfUrl) {
+  if (pdfUrl && errorWrapper && !document.querySelector('.fallback-link')) {
     const fallbackLink = document.createElement('div');
     fallbackLink.className = 'fallback-link';
     fallbackLink.innerHTML = `
