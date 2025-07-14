@@ -148,6 +148,7 @@ student.get('/debug/subjects', async (req, res) => {
 student.get('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecord)
 student.post('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecordpost)
 student.get('/user',authenticateToken,admincontrol.showuser)
+student.post('/user',authenticateToken,admincontrol.saveuser)
 // Route to view/display uploaded files in browser
 student.get('/view-file/:filename', authenticateTokenStudent, admincontrol.viewFile)
 

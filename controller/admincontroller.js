@@ -8,11 +8,12 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const { rootDir } = require("../utils/path");
 const { classSchema, subjectSchema, terminalSchema,newsubjectSchema } = require("../model/adminschema");
-const { adminSchema,superadminSchema} = require("../model/admin");
+const { adminSchema,superadminSchema, teacherSchema} = require("../model/admin");
 const { studentSchema } = require("../model/schema");
 const student = require("../routers/mainpage");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
+const userlist = mongoose.model("userlist", teacherSchema, "users");
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 
@@ -1138,17 +1139,45 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
 }
 exports.showuser = async (req, res, next) => {
   try {
-    const userList = await user.find({}).lean();
+    const subjects = await subject.find({}).lean();
+    const classlist = await studentClass.find({}).lean();
+
     const sidenavData = await getSidenavData();
-    res.render("admin/userlist", {
-      userList,
+    res.render("admin/user", {
+     
       editing: false,
-      currentPage: 'adminUser',
-      ...sidenavData
+      subjects,
+      classlist,
+      ...sidenavData,
+      currentPage: 'adminUser'
     });
   } catch (err) {
     console.error("Error in showuser:", err);
     res.status(500).send("Error loading user list: " + err.message);
+  }
+};
+exports.saveuser = async (req, res, next) => {
+  try {
+    const teacherName = req.body.teacherName.toUpperCase().trim();
+    const role = req.body.role.toUpperCase().trim();
+    const username = req.body.username.toLowerCase().trim();
+    const password = req.body.password.toLowerCase().trim();
+    
+
+    await userlist.create({
+      teacherName,
+      teacherID: req.body.teacherID,
+      role,
+      allowedSubjects: req.body.allowedSubjects, // Assuming this is an array of subjects
+      username,
+      password
+    });
+
+    console.log("User created successfully:", req.body);
+    res.redirect("/admin/user");
+  } catch (err) {
+    console.error("Error saving user:", err);
+    res.status(500).send("Error saving user: " + err.message);
   }
 };
 

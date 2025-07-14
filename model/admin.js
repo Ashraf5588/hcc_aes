@@ -13,4 +13,18 @@ const superadminSchema = new mongoose.Schema({
 
 });
 
-module.exports = {adminSchema, superadminSchema};
+const teacherSchema = new mongoose.Schema({
+  "teacherName": String,
+  "teacherId": String,
+  "role": String,
+  "allowedSubjects": [{
+    "subject": String,
+    "studentClass": String,
+  }],
+
+  "username": String,
+  "password": String,
+
+}, { strict: false });
+
+module.exports = {adminSchema, superadminSchema, teacherSchema};

@@ -328,14 +328,79 @@
         }
         
         /* Mobile Question Paper Button & Modal Styling */
+        #mobilePdfButton {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 1050;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: auto;
+        }
+        
         #mobilePdfButton .btn {
           box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
           transition: transform 0.2s, box-shadow 0.2s;
+          width: 60px;
+          height: 60px;
+          font-size: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, var(--primary) 0%, var(--secondary-dark) 100%);
+          border: none;
+          animation: pulse 2s infinite;
         }
         
         #mobilePdfButton .btn:active {
           transform: scale(0.95);
           box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+        }
+        
+        #mobilePdfButton .btn-label {
+          background-color: rgba(255, 255, 255, 0.9);
+          color: var(--dark);
+          padding: 2px 8px;
+          border-radius: 12px;
+          margin-top: 5px;
+          font-weight: 500;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          font-size: 0.75rem;
+        }
+        
+        /* Pulse animation for the button to make it more noticeable */
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(14, 165, 233, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+          }
+        }
+        
+        .pulse-animation {
+          animation: pulse 2s infinite;
+        }
+        
+        /* Modal styling enhancements */
+        #questionPaperModal .modal-content {
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        
+        #questionPaperModal .modal-header {
+          padding: 0.75rem 1rem;
+        }
+        
+        #questionPaperModal .pdf-loading {
+          background-color: #f8f9fa;
+          width: 100%;
+          height: 100%;
         }
         
         #questionPaperModal .modal-content {
@@ -1362,6 +1427,23 @@
             overflow: hidden;
             border: 1px solid rgba(0, 0, 0, 0.05);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            min-height: 150px;
+        }
+        
+        /* Fix row and column layout in question cards */
+        .question-analysis-card .row {
+            display: flex;
+            flex-wrap: nowrap;
+            margin-right: -5px;
+            margin-left: -5px;
+            width: 100%;
+            overflow-x: auto;
+        }
+        
+        .question-analysis-card .col {
+            flex: 0 0 260px;
+            max-width: 260px;
+            padding: 0 5px;
         }
         
         .column-header {
@@ -1434,6 +1516,10 @@
             transition: all 0.3s ease;
             margin-bottom: 20px;
             background-color: white;
+            width: 100%;
+            clear: both;
+            display: block;
+            position: relative; /* Ensure proper stacking */
         }
         
         .question-analysis-card:hover {
@@ -1743,36 +1829,47 @@
             </div>
         </header>
         
-        <!-- Mobile-specific question paper button that appears fixed at bottom right -->
+        <!-- Mobile-specific question paper button that appears fixed at bottom center -->
         <div class="d-block d-md-none" id="mobilePdfButton">
-          <button class="btn btn-primary rounded-circle shadow d-flex align-items-center justify-content-center" id="openQuestionPaperBtn" 
+          <button class="btn btn-primary rounded-circle shadow pulse-animation" id="openQuestionPaperBtn" 
             aria-label="Open Question Paper" title="Open Question Paper">
             <i class="fas fa-file-alt"></i>
           </button>
+          <span class="btn-label small">Question Paper</span>
         </div>
         
         <!-- Modal for displaying question paper on mobile without page reload -->
         <div class="modal fade" id="questionPaperModal" tabindex="-1" aria-labelledby="questionPaperModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-fullscreen">
             <div class="modal-content">
-              <div class="modal-header">
+              <div class="modal-header" style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary-dark) 100%); color: white;">
                 <h5 class="modal-title" id="questionPaperModalLabel">
                   <i class="fas fa-file-alt me-2"></i>Question Paper
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
-              <div class="modal-body p-0">
-                <div class="pdf-modal-container h-100">
+              <div class="modal-body p-0 position-relative">
+                <div class="pdf-modal-container h-100 d-flex flex-column justify-content-center align-items-center">
+                  <!-- Loading spinner is added here initially -->
+                  <div class="d-flex flex-column justify-content-center align-items-center h-100 pdf-loading">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-2">Loading question paper...</div>
+                  </div>
                   <!-- PDF will be loaded here via JavaScript -->
                 </div>
               </div>
-              <div class="modal-footer">
-                <a href="/uploads/<%=file%>" target="_blank" class="btn btn-outline-primary" download>
-                  <i class="fas fa-download me-1"></i> Download
-                </a>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                  <i class="fas fa-times me-1"></i> Close
-                </button>
+              <div class="modal-footer d-flex justify-content-between" style="background-color: #f8f9fa;">
+                <span class="text-muted small d-none d-sm-block"><%= file %></span>
+                <div>
+                  <a href="/uploads/<%=file%>" class="btn btn-outline-primary" download>
+                    <i class="fas fa-download me-1"></i> Download
+                  </a>
+                  <button type="button" class="btn btn-secondary ms-2" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2019,16 +2116,7 @@
         <div class="section-header text-center mb-4">
           <h4 class="fw-bold"><i class="fas fa-chart-bar me-2"></i>Student Response Analysis by Question</h4>
           <p class="text-muted">Detailed breakdown of student performance grouped by question with question paper always visible</p>
-          <div class="d-flex justify-content-center align-items-center mt-3 mb-2">
-            <span class="badge me-2" style="background-color: var(--primary);">Sky Blue</span>
-            <span class="badge" style="background-color: var(--secondary);">Brown</span>
-            <small class="text-muted mx-2">Professional Theme</small>
-            <div class="vr mx-3"></div>
-            <span class="badge me-2 bg-success">Correct</span>
-            <span class="badge me-2 bg-danger">Incorrect</span>
-            <span class="badge me-2 bg-primary">50% Correct</span>
-            <span class="badge bg-warning text-dark">Below 50%</span>
-          </div>
+        
         </div>
       </div>
     </div>
@@ -2070,12 +2158,12 @@
           </div>
           
           <div class="card-body p-0">
-            <div class="row g-0" style="flex-wrap: nowrap; overflow-x: auto; padding: 0.5rem; position: relative;">
+            <div class="question-row" style="display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 0.5rem; position: relative; gap: 10px; scroll-behavior: smooth; min-height: 200px;">
               <div class="scroll-indicator" style="position: absolute; bottom: 5px; right: 10px; background: rgba(0,0,0,0.1); color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; opacity: 0.7;">
                 <i class="fas fa-arrows-alt-h"></i> Scroll
               </div>
               <!-- Column 1: Correct Answers -->
-              <div class="col">
+              <div class="question-column" style="flex: 0 0 260px; padding: 0 5px; max-width: 260px;">
                 <div class="student-list-column correct-column h-100">
                   <div class="column-header bg-success text-white p-2">
                     <i class="fas fa-check-circle me-1"></i> Correct
@@ -2101,7 +2189,7 @@
               </div>
               
               <!-- Column 2: Incorrect Answers -->
-              <div class="col">
+              <div class="question-column" style="flex: 0 0 260px; padding: 0 5px; max-width: 260px;">
                 <div class="student-list-column incorrect-column h-100">
                   <div class="column-header bg-danger text-white p-2">
                     <i class="fas fa-times-circle me-1"></i> Incorrect
@@ -2127,7 +2215,7 @@
               </div>
               
               <!-- Column 3: 50% Correct -->
-              <div class="col">
+              <div class="question-column" style="flex: 0 0 260px; padding: 0 5px; max-width: 260px;">
                 <div class="student-list-column fifty-column h-100">
                   <div class="column-header bg-primary text-white p-2">
                     <i class="fas fa-percentage me-1"></i> 50% Correct
@@ -2153,8 +2241,8 @@
               </div>
               
               <!-- Column 4: Below 50% Correct -->
-              <div class="col">
-                <div class
+              <div class="question-column" style="flex: 0 0 260px; padding: 0 5px; max-width: 260px;">
+                <div class="student-list-column below50-column h-100">
                   <div class="column-header bg-warning text-dark p-2">
                     <i class="fas fa-arrow-down me-1"></i> Below 50%
                     <span class="badge bg-light text-dark float-end">
@@ -2179,9 +2267,9 @@
               </div>
               
               <!-- Column 5: Above 50% -->
-              <div class="col">
-                <div class="student-list-column below50-column h-100">
-                  <div class="column-header bg-warning text-dark p-2">
+              <div class="question-column" style="flex: 0 0 260px; padding: 0 5px; max-width: 260px;">
+                <div class="student-list-column above50-column h-100">
+                  <div class="column-header bg-success text-white p-2">
                     <i class="fas fa-arrow-up me-1"></i> Above 50%
                     <span class="badge bg-light text-dark float-end">
                       <%= questionData.categories.correctAbove50 ? questionData.categories.correctAbove50.total : 0 %>
@@ -2242,6 +2330,14 @@
           
           <!-- PDF viewer with multiple fallbacks -->
           <div id="pdfViewerContainer" class="pdf-viewer-container">
+            <!-- Enhanced PDF support messaging -->
+            <div id="pdfSupportMessage" class="alert alert-warning mb-3" style="display: none;">
+              <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span><strong>PDF Viewer Not Available</strong> - Your browser may not support embedded PDFs.</span>
+              </div>
+            </div>
+            
             <!-- Browser detection for Android WebView -->
             <div class="android-webview-only alert alert-info mb-3" style="display: none;">
               <i class="fas fa-info-circle me-2"></i>
@@ -2268,23 +2364,36 @@
                 style="border-radius: 8px;" 
                 class="pdf-viewer">
                 
-                <!-- Final fallback: message with direct link -->
-                <div class="pdf-blocked-message alert alert-warning mt-3">
-                  <p><i class="fas fa-exclamation-triangle me-2"></i> Unable to display PDF directly.</p>
-                  <p class="mb-0">Please use the buttons below:</p>
+                <!-- Enhanced fallback message with clear instructions and styling -->
+                <div class="pdf-blocked-message p-4 text-center">
+                  <div class="mb-3">
+                    <i class="fas fa-file-pdf fa-3x text-danger mb-3"></i>
+                    <h5>PDF Preview Not Available</h5>
+                    <p class="mb-1">Your browser doesn't support embedded PDF viewing.</p>
+                    <p class="text-muted small">Please use one of the options below:</p>
+                  </div>
                 </div>
             </object>
           </div>
           
-          <!-- Always show the external link buttons for better accessibility -->
-          <div class="text-center mt-2" id="pdfFallbackLinks">
-            <a href="/uploads/<%=file%>" target="_blank" class="btn btn-sm btn-outline-primary me-2" 
-               onclick="event.preventDefault(); window.open(this.href, '_blank', 'toolbar=0,location=0,menubar=0');">
-              <i class="fas fa-external-link-alt me-1"></i> View PDF
-            </a>
-            <a href="/uploads/<%=file%>" download class="btn btn-sm btn-outline-secondary android-webview-only" style="display: none;">
-              <i class="fas fa-download me-1"></i> Download
-            </a>
+          <!-- Enhanced buttons with clear options for users -->
+          <div class="text-center mt-3 mb-2" id="pdfFallbackLinks">
+            <div class="pdf-action-buttons">
+              <a href="/uploads/<%=file%>" target="_blank" class="btn btn-sm btn-primary me-2" 
+                onclick="event.preventDefault(); window.open(this.href, '_blank', 'toolbar=0,location=0,menubar=0');">
+                <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+              </a>
+              <a href="/uploads/<%=file%>" download class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-download me-1"></i> Download PDF
+              </a>
+              <button type="button" class="btn btn-sm btn-outline-info android-webview-only ms-2" style="display: none;" id="useGoogleViewer">
+                <i class="fab fa-google me-1"></i> Try Google Viewer
+              </button>
+            </div>
+            <div class="mt-2 small text-muted" id="pdfSupportNotice">
+              <i class="fas fa-info-circle me-1"></i> 
+              If you can't see the PDF above, please use these buttons
+            </div>
           </div>
         </div>
       </div>
@@ -2432,22 +2541,81 @@
     // Initialize zoom functionality
     initZoom();
     
-    // Handle PDF viewer and detect if it's blocked
+    // Enhanced PDF support detection and handling
     const pdfObject = document.getElementById('questionPaperObject');
     const loadingIndicator = document.getElementById('pdfLoadingIndicator');
+    const pdfSupportMessage = document.getElementById('pdfSupportMessage');
+    const pdfFallbackLinks = document.getElementById('pdfFallbackLinks');
+    const useGoogleViewerBtn = document.getElementById('useGoogleViewer');
+    
+    // Function to check if browser is likely to support PDF viewing
+    function checkPDFSupport() {
+      const ua = navigator.userAgent.toLowerCase();
+      // Check browser types that typically support PDFs
+      const isChrome = ua.indexOf('chrome') > -1 && ua.indexOf('edge') === -1;
+      const isFirefox = ua.indexOf('firefox') > -1;
+      const isSafari = ua.indexOf('safari') > -1 && ua.indexOf('chrome') === -1;
+      const isEdge = ua.indexOf('edg') > -1;
+      
+      // iOS and macOS Safari have good PDF support
+      const isApple = /ipad|iphone|ipod|macintosh/.test(ua) && !window.MSStream;
+      
+      // WebViews often have issues with PDFs
+      const isWebView = ua.indexOf('wv') > -1 || (ua.indexOf('android') > -1 && ua.indexOf('chrome') === -1);
+      
+      return {
+        isPDFLikelySupported: (isChrome || isFirefox || isSafari || isEdge || isApple) && !isWebView,
+        isWebView: isWebView,
+        browserType: isChrome ? 'chrome' : isFirefox ? 'firefox' : isSafari ? 'safari' : isEdge ? 'edge' : 'other'
+      };
+    }
     
     if (pdfObject && loadingIndicator) {
+      // Get PDF support info
+      const pdfSupport = checkPDFSupport();
+      
+      // Add data attribute for styling
+      document.body.setAttribute('data-pdf-support', pdfSupport.isPDFLikelySupported ? 'supported' : 'unsupported');
+      document.body.setAttribute('data-browser', pdfSupport.browserType);
+      
       // Set initial state
       pdfObject.style.opacity = 0.4;
       pdfObject.style.transition = 'opacity 0.3s ease';
+      
+      // If we suspect PDF might not be supported, show warning immediately
+      if (!pdfSupport.isPDFLikelySupported) {
+        if (pdfSupportMessage) {
+          pdfSupportMessage.style.display = 'block';
+        }
+        if (pdfFallbackLinks) {
+          pdfFallbackLinks.style.display = 'block';
+          document.getElementById('pdfSupportNotice').innerHTML = '<strong>Your browser may not support PDF viewing</strong> - Please use these options:';
+        }
+      }
       
       // Handle successful load
       pdfObject.addEventListener('load', function() {
         this.style.opacity = 1;
         loadingIndicator.style.display = 'none';
+        // Hide warning if PDF loads successfully despite our suspicions
+        if (pdfSupportMessage) pdfSupportMessage.style.display = 'none';
       });
       
-      // Error detection - check if PDF is blocked after a delay
+      // Google Viewer button
+      if (useGoogleViewerBtn) {
+        useGoogleViewerBtn.addEventListener('click', function() {
+          const pdfUrl = encodeURIComponent(window.location.origin + '/uploads/<%= file %>');
+          const googleViewerUrl = `https://docs.google.com/viewer?url=${pdfUrl}&embedded=true`;
+          window.open(googleViewerUrl, '_blank');
+        });
+        
+        // Show Google viewer option for WebView
+        if (pdfSupport.isWebView) {
+          useGoogleViewerBtn.style.display = 'inline-block';
+        }
+      }
+      
+      // Advanced error detection - check if PDF is blocked after a delay
       setTimeout(function() {
         try {
           // Try to access the object's content document
@@ -2456,8 +2624,26 @@
           // If we can't access it or if there's no content, it might be blocked
           if (!objDoc || objDoc.body.innerHTML === '') {
             console.log('PDF may be blocked - showing fallback options');
-            document.getElementById('pdfFallbackLinks').style.display = 'block';
-            loadingIndicator.innerHTML = '<div class="alert alert-warning">PDF viewer may be blocked by your browser</div>';
+            
+            if (pdfFallbackLinks) {
+              pdfFallbackLinks.style.display = 'block';
+              // Make buttons more prominent
+              pdfFallbackLinks.querySelector('.pdf-action-buttons').classList.add('mt-3', 'mb-3');
+              document.querySelectorAll('#pdfFallbackLinks .btn').forEach(btn => {
+                btn.classList.remove('btn-sm');
+              });
+            }
+            
+            if (pdfSupportMessage) {
+              pdfSupportMessage.style.display = 'block';
+            }
+            
+            loadingIndicator.innerHTML = `
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                PDF viewer cannot be loaded
+              </div>
+            `;
           }
         } catch (e) {
           // Access denied error means the PDF is being displayed in a sandboxed mode
@@ -3018,20 +3204,23 @@
       // Create Bootstrap modal object
       const modal = new bootstrap.Modal(questionPaperModal);
       
+      // Check if running in Android WebView
+      const isWebView = isAndroidWebView();
+      
       // Handle button click to open modal
       openQuestionPaperBtn.addEventListener('click', function() {
-        // Load PDF into the modal only when it's opened (for performance)
-        if (!pdfModalContainer.querySelector('object')) {
-          // Create PDF object element for the modal
-          const pdfObject = document.createElement('object');
-          pdfObject.setAttribute('data', `/uploads/${pdfFile}#toolbar=0&navpanes=0&view=FitH&embedded=true`);
-          pdfObject.setAttribute('type', 'application/pdf');
-          pdfObject.setAttribute('width', '100%');
-          pdfObject.setAttribute('height', '100%');
-          pdfObject.setAttribute('style', 'border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);');
-          pdfObject.classList.add('pdf-viewer');
-          
-          // Add loading spinner
+        // Clear any previous content except the loading spinner
+        const spinner = pdfModalContainer.querySelector('.pdf-loading');
+        if (spinner) {
+          // Keep spinner, remove anything else
+          Array.from(pdfModalContainer.children).forEach(child => {
+            if (!child.classList.contains('pdf-loading')) {
+              child.remove();
+            }
+          });
+        } else {
+          // Clear completely and add spinner
+          pdfModalContainer.innerHTML = '';
           const loadingSpinner = document.createElement('div');
           loadingSpinner.className = 'd-flex flex-column justify-content-center align-items-center h-100 pdf-loading';
           loadingSpinner.innerHTML = `
@@ -3041,15 +3230,6 @@
             <div class="mt-2">Loading question paper...</div>
           `;
           pdfModalContainer.appendChild(loadingSpinner);
-          
-          // Add the PDF object
-          pdfModalContainer.appendChild(pdfObject);
-          
-          // Remove spinner when PDF loads
-          pdfObject.onload = function() {
-            const spinner = pdfModalContainer.querySelector('.pdf-loading');
-            if (spinner) spinner.remove();
-          };
         }
         
         // Use the History API to handle the back button
@@ -3058,10 +3238,226 @@
         
         // Open the modal
         modal.show();
+        
+        // Use setTimeout to make the spinner visible before loading PDF
+        setTimeout(() => {
+          if (isWebView) {
+            try {
+              // For Android WebView, use an embedded Google Docs Viewer to avoid auto-download
+              const iframe = document.createElement('iframe');
+              // Use Google Docs Viewer as a fallback for better mobile compatibility
+              const pdfUrl = encodeURIComponent(window.location.origin + '/uploads/' + pdfFile);
+              iframe.src = `https://docs.google.com/viewer?url=${pdfUrl}&embedded=true`;
+              iframe.setAttribute('width', '100%');
+              iframe.setAttribute('height', '100%');
+              iframe.setAttribute('style', 'min-height: 75vh; border: none; border-radius: 8px;');
+              iframe.classList.add('pdf-viewer');
+              
+              // Create a direct link as backup
+              const directLinkContainer = document.createElement('div');
+              directLinkContainer.className = 'text-center my-2 sticky-top bg-light py-2';
+              directLinkContainer.innerHTML = `
+                <a href="/uploads/${pdfFile}" class="btn btn-sm btn-outline-primary" target="_blank">
+                  <i class="fas fa-external-link-alt me-1"></i> Open PDF Directly
+                </a>
+              `;
+              
+              // Handle iframe load event
+              iframe.onload = function() {
+                console.log('PDF iframe loaded');
+                const spinner = pdfModalContainer.querySelector('.pdf-loading');
+                if (spinner) spinner.remove();
+              };
+              
+              // Handle iframe error
+              iframe.onerror = function(e) {
+                console.error('PDF iframe error', e);
+                const spinner = pdfModalContainer.querySelector('.pdf-loading');
+                if (spinner) {
+                  spinner.innerHTML = `
+                    <div class="alert alert-warning">
+                      <i class="fas fa-exclamation-triangle me-2"></i>
+                      Could not load PDF preview. Please use the direct link.
+                    </div>
+                  `;
+                }
+              };
+              
+              // Add the direct link first
+              pdfModalContainer.appendChild(directLinkContainer);
+              // Then add the iframe
+              pdfModalContainer.appendChild(iframe);
+            } catch (err) {
+              console.error('Error loading PDF in WebView:', err);
+              // Show enhanced error message with better options
+              pdfModalContainer.innerHTML = `
+                <div class="alert alert-warning mb-4">
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-3 fa-2x text-warning"></i>
+                    <div>
+                      <h5 class="mb-1">Unable to Display PDF</h5>
+                      <p class="mb-0">Your browser doesn't support embedded PDF viewing.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="text-center my-4">
+                  <div class="mb-4">
+                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48IS0tIEZvbnQgQXdlc29tZSBQcm8gNi40LjAgYnkgQGZvbnRhd2Vzb21lIC0gaHR0cHM6Ly9mb250YXdlc29tZS5jb20gTGljZW5zZSAtIGh0dHBzOi8vZm9udGF3ZXNvbWUuY29tL2xpY2Vuc2UgKENvbW1lcmNpYWwgTGljZW5zZSkgQ29weXJpZ2h0IDIwMjMgRm9udGljb25zLCBJbmMuIC0tPjxwYXRoIGZpbGw9IiNlNzRjM2MiIGQ9Ik0wIDY0QzAgMjguNyAyOC43IDAgNjQgMEg0NDhDNDgzLjMgMCA1MTIgMjguNyA1MTIgNjRWMzU4LjdjMCAxNS40LTYuMSAzMC4xLTE2LjkgNDAuOUw0MDkuNCA0ODMuNkMzOTguNiA0OTQuNCAzODMuOSA1MDAgMzY4LjUgNTAwSDY0YTY0IDY0IDAgMCAxIC02NC02NFY2NHptMTI4IDBINjR2Mzg0SDM1MlYzNTJjMC0xNy43IDE0LjMtMzIgMzItMzJoNjRWNjRIMTI4em0yNTYgMjA4YTE2IDE2IDAgMSAwIDAgMzIgMTYgMTYgMCAxIDAgMC0zMnptLTg5LjktMjEuOWE3Ny44OSA3Ny44OSAwIDAgMSAyMS4xLTExLjdjMTAuNi00LjIgMTYuOC0xNS42IDEyLjUtMjYuM3MtMTUuNi0xNi44LTI2LjMtMTIuNWMtMTEgNC40LTIxLjIgMTAuNC0zMC40IDE3LjlMMjQ5LjggMjM4LjhjLTIwLjItMTAuNy00My40LTE3LTY4LTEyLjRsLTIwLjUtMjAuNUM4Mi44IDIyMy45IDM5LjEgMjQyLjggMjEuMSAyOTcuOGMtMi4xIDYuNSA0LjIgMTIuMyAxMC40IDEwLjZDODEuNiAyOTQuMiAxMzAgMzAwLjQgMTYyLjQgMzM3LjZjMi44IDMuMiA3LjUgMyAxMC4xLS40YzExLjQtMTUuMSAyNy43LTI2LjYgNDYuOC0zMC40bDQ1LjktMTYuNGMtMy4yIDUuMS01LjcgMTAuNi03LjkgMTYuMy01LjggMTYgMS4xIDMyLjggMTYuMSAzNi44YzMuOCAxIDE0LjQgMS41IDI1LjltMjUuOC05LjVhMjkuOSAyOS45IDAgMCAxIC00LjctMjMuNGM0LjUgMi40IDkgNS4xIDEzLjMgOC4yeiIvPjwvc3ZnPg==" 
+                         alt="PDF Icon" style="width: 80px; height: 80px;">
+                  </div>
+                  <p class="mb-3">Please use one of these options:</p>
+                  <div class="d-flex flex-column gap-2 align-items-center">
+                    <a href="/uploads/${pdfFile}" class="btn btn-primary" target="_blank">
+                      <i class="fas fa-external-link-alt me-2"></i> Open in New Tab
+                    </a>
+                    <a href="/uploads/${pdfFile}" class="btn btn-outline-secondary" download>
+                      <i class="fas fa-download me-2"></i> Download PDF
+                    </a>
+                    <a href="https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + '/uploads/' + pdfFile)}&embedded=true" 
+                       class="btn btn-outline-info" target="_blank">
+                      <i class="fab fa-google me-2"></i> Try Google Viewer
+                    </a>
+                  </div>
+                </div>
+              `;
+            }
+          } else {
+            try {
+              // Check if browser likely supports PDF viewing
+              const isPDFSupported = () => {
+                const isChrome = navigator.userAgent.indexOf("Chrome") > -1;
+                const isFirefox = navigator.userAgent.indexOf("Firefox") > -1;
+                const isSafari = navigator.userAgent.indexOf("Safari") > -1 && navigator.userAgent.indexOf("Chrome") === -1;
+                const isEdge = navigator.userAgent.indexOf("Edg") > -1;
+                
+                // Most modern browsers support PDF viewing
+                return isChrome || isFirefox || isSafari || isEdge;
+              };
+              
+              // First try to detect PDF support
+              const supportsPDF = isPDFSupported();
+              
+              // Create a container for better organization
+              const viewerContainer = document.createElement('div');
+              viewerContainer.className = 'pdf-viewer-container w-100';
+              
+              // Create PDF object with enhanced fallback
+              const pdfObject = document.createElement('object');
+              pdfObject.setAttribute('data', `/uploads/${pdfFile}#toolbar=0&navpanes=0&view=FitH&embedded=true`);
+              pdfObject.setAttribute('type', 'application/pdf');
+              pdfObject.setAttribute('width', '100%');
+              pdfObject.setAttribute('height', '75vh');
+              pdfObject.setAttribute('style', 'border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);');
+              pdfObject.classList.add('pdf-viewer');
+              
+              // Enhanced fallback content with clear message
+              pdfObject.innerHTML = `
+                <div class="pdf-fallback-message alert alert-info p-4 text-center">
+                  <div class="mb-3">
+                    <i class="fas fa-file-pdf fa-3x text-danger mb-3"></i>
+                    <h5>PDF Preview Not Available</h5>
+                    <p>Your browser doesn't support embedded PDF viewing.</p>
+                  </div>
+                  <div class="d-flex flex-column gap-2 align-items-center">
+                    <a href="/uploads/${pdfFile}" class="btn btn-primary" target="_blank">
+                      <i class="fas fa-external-link-alt me-2"></i> Open PDF in New Tab
+                    </a>
+                    <a href="/uploads/${pdfFile}" class="btn btn-outline-secondary" download>
+                      <i class="fas fa-download me-2"></i> Download PDF
+                    </a>
+                  </div>
+                </div>
+              `;
+              
+              // If we suspect the browser doesn't support PDFs, show a warning above the PDF
+              if (!supportsPDF) {
+                const warningBanner = document.createElement('div');
+                warningBanner.className = 'alert alert-warning mb-3';
+                warningBanner.innerHTML = `
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  <strong>Browser PDF Support Limited</strong> - If you can't see the PDF below, please use the buttons to open or download it.
+                `;
+                viewerContainer.appendChild(warningBanner);
+              }
+              
+              // Add the PDF object
+              viewerContainer.appendChild(pdfObject);
+              
+              // Add alternative options below for all users
+              const alternativeOptions = document.createElement('div');
+              alternativeOptions.className = 'mt-3 pt-2 border-top text-center';
+              alternativeOptions.innerHTML = `
+                <p class="text-muted small mb-2">Having trouble viewing this PDF?</p>
+                <div class="btn-group">
+                  <a href="/uploads/${pdfFile}" class="btn btn-sm btn-outline-primary" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+                  </a>
+                  <a href="/uploads/${pdfFile}" class="btn btn-sm btn-outline-secondary" download>
+                    <i class="fas fa-download me-1"></i> Download
+                  </a>
+                </div>
+              `;
+              viewerContainer.appendChild(alternativeOptions);
+              
+              // Remove spinner when PDF loads or after timeout
+              pdfObject.onload = function() {
+                console.log("PDF object loaded");
+                const spinner = pdfModalContainer.querySelector('.pdf-loading');
+                if (spinner) spinner.remove();
+              };
+              
+              // Add a timeout to remove spinner even if onload doesn't trigger
+              setTimeout(function() {
+                const spinner = pdfModalContainer.querySelector('.pdf-loading');
+                if (spinner) spinner.remove();
+              }, 3000);
+              
+              pdfModalContainer.appendChild(viewerContainer);
+            } catch (err) {
+              console.error('Error loading PDF:', err);
+              // Show enhanced error message with better options
+              pdfModalContainer.innerHTML = `
+                <div class="alert alert-warning mb-4">
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-3 fa-2x text-warning"></i>
+                    <div>
+                      <h5 class="mb-1">PDF Viewer Not Available</h5>
+                      <p class="mb-0">Your browser doesn't support embedded PDF viewing.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="text-center my-4">
+                  <div class="mb-4">
+                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48IS0tIEZvbnQgQXdlc29tZSBQcm8gNi40LjAgYnkgQGZvbnRhd2Vzb21lIC0gaHR0cHM6Ly9mb250YXdlc29tZS5jb20gTGljZW5zZSAtIGh0dHBzOi8vZm9udGF3ZXNvbWUuY29tL2xpY2Vuc2UgKENvbW1lcmNpYWwgTGljZW5zZSkgQ29weXJpZ2h0IDIwMjMgRm9udGljb25zLCBJbmMuIC0tPjxwYXRoIGZpbGw9IiNlNzRjM2MiIGQ9Ik0wIDY0QzAgMjguNyAyOC43IDAgNjQgMEg0NDhDNDgzLjMgMCA1MTIgMjguNyA1MTIgNjRWMzU4LjdjMCAxNS40LTYuMSAzMC4xLTE2LjkgNDAuOUw0MDkuNCA0ODMuNkMzOTguNiA0OTQuNCAzODMuOSA1MDAgMzY4LjUgNTAwSDY0YTY0IDY0IDAgMCAxIC02NC02NFY2NHptMTI4IDBINjR2Mzg0SDM1MlYzNTJjMC0xNy43IDE0LjMtMzIgMzItMzJoNjRWNjRIMTI4em0yNTYgMjA4YTE2IDE2IDAgMSAwIDAgMzIgMTYgMTYgMCAxIDAgMC0zMnptLTg5LjktMjEuOWE3Ny44OSA3Ny44OSAwIDAgMSAyMS4xLTExLjdjMTAuNi00LjIgMTYuOC0xNS42IDEyLjUtMjYuM3MtMTUuNi0xNi44LTI2LjMtMTIuNWMtMTEgNC40LTIxLjIgMTAuNC0zMC40IDE3LjlMMjQ5LjggMjM4LjhjLTIwLjItMTAuNy00My40LTE3LTY4LTEyLjRsLTIwLjUtMjAuNUM4Mi44IDIyMy45IDM5LjEgMjQyLjggMjEuMSAyOTcuOGMtMi4xIDYuNSA0LjIgMTIuMyAxMC40IDEwLjZDODEuNiAyOTQuMiAxMzAgMzAwLjQgMTYyLjQgMzM3LjZjMi44IDMuMiA3LjUgMyAxMC4xLS40YzExLjQtMTUuMSAyNy43LTI2LjYgNDYuOC0zMC40bDQ1LjktMTYuNGMtMy4yIDUuMS01LjcgMTAuNi03LjkgMTYuMy01LjggMTYgMS4xIDMyLjggMTYuMSAzNi44YzMuOCAxIDE0LjQgMS41IDI1LjltMjUuOC05LjVhMjkuOSAyOS45IDAgMCAxIC00LjctMjMuNGM0LjUgMi40IDkgNS4xIDEzLjMgOC4yeiIvPjwvc3ZnPg==" 
+                         alt="PDF Icon" style="width: 80px; height: 80px;">
+                  </div>
+                  <p class="mb-3">Please use one of these options:</p>
+                  <div class="d-flex flex-column gap-2 align-items-center">
+                    <a href="/uploads/${pdfFile}" class="btn btn-primary" target="_blank">
+                      <i class="fas fa-external-link-alt me-2"></i> Open in New Tab
+                    </a>
+                    <a href="/uploads/${pdfFile}" class="btn btn-outline-secondary" download>
+                      <i class="fas fa-download me-2"></i> Download PDF
+                    </a>
+                    <a href="https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + '/uploads/' + pdfFile)}&embedded=true" 
+                       class="btn btn-outline-info" target="_blank">
+                      <i class="fab fa-google me-2"></i> Try Google Viewer
+                    </a>
+                  </div>
+                </div>
+              `;
+            }
+          }
+        }, 500); // Short delay to ensure modal is visible first
       });
       
       // Handle modal close
       questionPaperModal.addEventListener('hidden.bs.modal', function() {
+        // Clear the modal content when closed to prevent memory issues
+        pdfModalContainer.innerHTML = '';
+        
         if (window.location.hash === '#questionPaper') {
           history.back(); // Go back to remove the hash
         }
@@ -3073,15 +3469,6 @@
           modal.hide(); // Close the modal if it's open
         }
       });
-      
-      // Style the mobile PDF button to make it stand out
-      openQuestionPaperBtn.style.position = 'fixed';
-      openQuestionPaperBtn.style.bottom = '20px';
-      openQuestionPaperBtn.style.right = '20px';
-      openQuestionPaperBtn.style.zIndex = '1050';
-      openQuestionPaperBtn.style.width = '60px';
-      openQuestionPaperBtn.style.height = '60px';
-      openQuestionPaperBtn.style.fontSize = '24px';
     }
   </script>
 </body>
