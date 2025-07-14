@@ -3210,16 +3210,35 @@
         // Create a warning/note for users
         const webviewNote = document.createElement('div');
         webviewNote.className = 'alert alert-info mb-2 small';
-        webviewNote.innerHTML = '<i class="fas fa-info-circle me-1"></i> Using compatible mode for Android WebView';
+        webviewNote.innerHTML = '<i class="fas fa-info-circle me-1"></i> Using PDF.js compatible mode for Android WebView';
         
         // Add note before iframe
         container.insertBefore(webviewNote, container.firstChild);
         
-        // Update iframe source with additional parameters
-        const currentSrc = iframe.src;
-        iframe.src = currentSrc + '#view=FitH&toolbar=0&navpanes=0&embedded=true';
+        // Check if we should use PDF.js viewer instead of direct embed
+        const usePdfJs = true; // Always use PDF.js for Android WebView
         
-        // Add PDF.js viewer if available
+        if (usePdfJs) {
+          // Hide the original iframe
+          iframe.style.display = 'none';
+          
+          // Create a button to open in PDF.js viewer
+          const pdfJsButton = document.createElement('div');
+          pdfJsButton.className = 'text-center p-3';
+          pdfJsButton.innerHTML = `
+            <p class="mb-2">For best viewing experience on Android:</p>
+            <a href="/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}" class="btn btn-primary" target="_blank">
+              <i class="fas fa-file-pdf me-2"></i> Open with PDF.js Viewer
+            </a>
+          `;
+          container.appendChild(pdfJsButton);
+        } else {
+          // Update iframe source with additional parameters
+          const currentSrc = iframe.src;
+          iframe.src = currentSrc + '#view=FitH&toolbar=0&navpanes=0&embedded=true';
+        }
+        
+        // Add fallback options if iframe fails
         iframe.onerror = function() {
           iframe.style.display = 'none';
           
@@ -3344,27 +3363,21 @@
           return isChrome || isFirefox || isSafari || isEdge;
         };
 
-        // If this is an Android WebView, or PDF support might be limited, use Google Docs Viewer
+        // If this is an Android WebView or PDF support might be limited, use PDF.js viewer
         if (isWebView || !isPDFSupported()) {
-          const pdfUrl = encodeURIComponent(window.location.origin + '/uploads/' + pdfFile);
-          const googleViewerUrl = `https://docs.google.com/viewer?url=${pdfUrl}&embedded=false`;
-          // Use a different way to open on Android WebView to prevent refresh
-          if (navigator.userAgent.indexOf('wv') > -1) {
-            // Using location.href with a timeout gives user time to go back without refresh
-            setTimeout(() => {
-              const newTab = window.open('about:blank', '_blank');
-              if (newTab) {
-                newTab.location.href = googleViewerUrl;
-              } else {
-                // Fallback if popup is blocked
-                window.location.href = googleViewerUrl;
-              }
-            }, 100);
-          } else {
-            window.open(googleViewerUrl, '_blank');
-          }
+          // PDF.js viewer URL with full path to PDF - works on Android WebView without downloading
+          const pdfJsViewerUrl = `/web/viewer.html?file=${encodeURIComponent('/uploads/' + pdfFile)}`;
+          
+          // If user explicitly requested to avoid downloading PDFs
+          sessionStorage.setItem('preventPdfDownload', 'true');
+          
+          console.log('Opening PDF in PDF.js viewer:', pdfJsViewerUrl);
+          
+          // Open in a new tab using the PDF.js viewer (prevents auto-download)
+          window.open(pdfJsViewerUrl, '_blank');
         } else {
           // Direct PDF link for browsers that support it
+          console.log('Opening PDF directly:', '/uploads/' + pdfFile);
           window.open('/uploads/' + pdfFile, '_blank');
         }
       });
