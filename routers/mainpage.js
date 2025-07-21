@@ -57,7 +57,7 @@ student.post('/admin/new/subject/:subjectId?',authenticateToken,admincontrol.add
 student.get('/admin/new/subject/:subjectId/:editing?',authenticateToken,admincontrol.editNewSubject)
 student.get('/delete/new/subject/:subjectId',authenticateToken,admincontrol.deleteNewSubject)
 
-student.get('/delete/subject/:subjectId/:subjectname?',authenticateToken,admincontrol.deleteSubject)
+student.get('/delete/subject/:subjectId/:subjectname?',authenticateTokenStudent,admincontrol.deleteSubject)
 student.get('/delete/class/:classId',authenticateToken,admincontrol.deleteStudentClass)
 student.get('/admin/editsub/:subId/:editing?',authenticateTokenStudent,admincontrol.editSub)
 student.get('/admin/editclass/:classId/:editing?',authenticateToken,admincontrol.editClass)
