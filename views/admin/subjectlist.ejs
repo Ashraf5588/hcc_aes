@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <!-- WebView compatibility meta tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Subject Management | AES Admin</title>  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/adminpannel.css">
   <link rel="stylesheet" href="/nav.css">
@@ -488,9 +494,27 @@
 
 <div class="form-group">
     <label for="questionPaper">Question Paper:</label>
-    <input type="file" name="questionPaperOfClass" id="questionPaper" class="form-control mb-3"
-         accept=".pdf, .doc, .docx, .txt"
-         title="Upload Question Paper">
+    
+    <!-- Enhanced file input with WebView compatibility -->
+    <div class="file-upload-container">
+      <input type="file" name="questionPaperOfClass" id="questionPaper" class="form-control mb-3 file-input-enhanced"
+           accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+           title="Upload Question Paper"
+           data-webview-compatible="true">
+      
+      <!-- Fallback button for WebView -->
+      <button type="button" id="fileSelectButton" class="btn btn-outline-secondary mb-2 webview-file-button" style="display: none;">
+        <i class="fas fa-upload"></i> Choose File
+      </button>
+      
+      <!-- File status display -->
+      <div id="fileStatus" class="file-status mb-2" style="display: none;">
+        <span class="badge bg-success">
+          <i class="fas fa-check-circle"></i> File selected: <span id="fileName"></span>
+        </span>
+      </div>
+    </div>
+    
     <% if (editing && subjectedit.questionPaperOfClass) { %>
       <div class="mt-2">
         <div class="alert alert-info py-2">
@@ -674,6 +698,132 @@ if (editing === 'true') {
   });
 }
 
+// WebView File Upload Compatibility
+(function() {
+  // Detect if running in WebView
+  function isWebView() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    return /wv|WebView|Android.*Version\/\d+\.\d+/.test(userAgent) || 
+           window.AndroidInterface !== undefined ||
+           window.webkit && window.webkit.messageHandlers;
+  }
+
+  // Enhanced file input handling for WebView compatibility
+  function initFileUploadCompatibility() {
+    const fileInput = document.getElementById('questionPaper');
+    const fileButton = document.getElementById('fileSelectButton');
+    const fileStatus = document.getElementById('fileStatus');
+    const fileName = document.getElementById('fileName');
+
+    if (!fileInput) return;
+
+    // Show fallback button for WebView
+    if (isWebView()) {
+      console.log('WebView detected - enabling compatibility mode');
+      fileButton.style.display = 'inline-block';
+      
+      // Add click handler for fallback button
+      fileButton.addEventListener('click', function() {
+        fileInput.click();
+      });
+
+      // Enhanced styling for WebView
+      fileInput.style.position = 'absolute';
+      fileInput.style.left = '-9999px';
+      fileInput.style.opacity = '0';
+    }
+
+    // Enhanced change event handler
+    fileInput.addEventListener('change', function(e) {
+      console.log('File input changed:', e.target.files.length);
+      
+      if (this.files && this.files.length > 0) {
+        const file = this.files[0];
+        console.log('Selected file:', file.name, 'Size:', file.size, 'Type:', file.type);
+        
+        // Update file status
+        fileName.textContent = file.name;
+        fileStatus.style.display = 'block';
+        
+        // Validate file type
+        const allowedTypes = ['application/pdf', 'application/msword', 
+                             'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                             'text/plain'];
+        const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt'];
+        
+        const isValidType = allowedTypes.some(type => file.type === type) ||
+                           allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+        
+        if (!isValidType) {
+          alert('Please select a valid file (PDF, DOC, DOCX, or TXT)');
+          this.value = '';
+          fileStatus.style.display = 'none';
+          return;
+        }
+
+        // Check file size (limit to 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          alert('File size must be less than 10MB');
+          this.value = '';
+          fileStatus.style.display = 'none';
+          return;
+        }
+
+        // Update existing editing alert if present
+        const currentFileAlert = document.querySelector('.alert-info');
+        if (currentFileAlert && editing === 'true') {
+          currentFileAlert.innerHTML = `
+            <i class="fas fa-upload me-2"></i>
+            <strong>New file selected:</strong> ${file.name}
+            <br>
+            <small class="text-muted">This will replace the current question paper when you save.</small>
+          `;
+          currentFileAlert.className = 'alert alert-warning py-2';
+        }
+      } else {
+        fileStatus.style.display = 'none';
+        
+        // Reset to original state if no file selected
+        const currentFileAlert = document.querySelector('.alert-warning, .alert-info');
+        if (currentFileAlert && editing === 'true' && typeof subjectedit !== 'undefined' && subjectedit.questionPaperOfClass) {
+          currentFileAlert.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Current file:</strong> ${subjectedit.questionPaperOfClass}
+            ${subjectedit.questionPaperOfClass !== 'default.pdf' ? `<a href="/file-viewer/${subjectedit.questionPaperOfClass}" target="_blank" class="btn btn-sm btn-outline-primary ms-2"><i class="fas fa-eye"></i> View File</a>` : ''}
+            <br>
+            <small class="text-muted">Select a new file above to replace the current question paper, or leave empty to keep the existing file.</small>
+          `;
+          currentFileAlert.className = 'alert alert-info py-2';
+        }
+      }
+    });
+
+    // Add focus/blur events to help with WebView issues
+    fileInput.addEventListener('focus', function() {
+      console.log('File input focused');
+    });
+
+    fileInput.addEventListener('blur', function() {
+      console.log('File input blurred');
+    });
+
+    // Trigger file input on button click (for debugging)
+    if (fileButton) {
+      fileButton.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        setTimeout(() => fileInput.click(), 100);
+      });
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFileUploadCompatibility);
+  } else {
+    initFileUploadCompatibility();
+  }
+})();
+
   </script>
 
 
@@ -785,6 +935,85 @@ if (editing === 'true') {
     font-weight: 600;
     margin-bottom: 10px;
     color: #495057;
+  }
+
+  /* WebView File Upload Compatibility Styles */
+  .file-upload-container {
+    position: relative;
+    margin-bottom: 10px;
+  }
+
+  .file-input-enhanced {
+    position: relative;
+    z-index: 2;
+    background-color: #fff;
+    cursor: pointer;
+  }
+
+  .webview-file-button {
+    width: 100%;
+    padding: 10px 15px;
+    font-size: 16px;
+    border: 2px dashed #0d6efd;
+    background-color: #f8f9ff;
+    color: #0d6efd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .webview-file-button:hover,
+  .webview-file-button:focus {
+    background-color: #e7f3ff;
+    border-color: #0056b3;
+    color: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 86, 179, 0.2);
+  }
+
+  .webview-file-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 86, 179, 0.2);
+  }
+
+  .file-status {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #d1edff;
+    border-radius: 6px;
+    border-left: 4px solid #0d6efd;
+  }
+
+  .file-status .badge {
+    font-size: 0.9rem;
+    padding: 6px 10px;
+  }
+
+  /* Enhanced mobile/touch support */
+  @media (max-width: 768px) {
+    .webview-file-button {
+      padding: 12px 20px;
+      font-size: 18px;
+      min-height: 50px;
+    }
+    
+    .file-input-enhanced {
+      min-height: 50px;
+      font-size: 16px;
+    }
+  }
+
+  /* Accessibility improvements */
+  .file-input-enhanced:focus {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+  }
+
+  .webview-file-button:focus {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
   }
 </style>
 
