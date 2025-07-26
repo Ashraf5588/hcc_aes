@@ -13,21 +13,64 @@ const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
-
+const bcrypt = require("bcrypt");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 
 // Helper function to fetch sidenav data
-const getSidenavData = async () => {
+const getSidenavData = async (req) => {
   try {
     const subjects = await subjectlist.find({}).lean();
     const studentClassdata = await studentClass.find({}).lean();
     const terminals = await terminal.find({}).lean();
     
+    let accessibleSubject = [];
+    let accessibleClass = [];
+    
+    // Check if req exists and has user property
+    if (req && req.user) {
+      const user = req.user;
+      // Log user info for debugging
+      if (user && user.role) {
+        console.log('User role:', user.role);
+        console.log('User allowed subjects:', user.allowedSubjects || []);
+      } else {
+        console.log('User object exists but missing role or allowedSubjects');
+      }
+      
+      if (user.role === "ADMIN") {
+        accessibleSubject = subjects;
+        accessibleClass = studentClassdata;
+      } else {
+        // Filter subjects based on user's allowed subjects
+        accessibleSubject = subjects.filter(subj =>
+          user.allowedSubjects && user.allowedSubjects.some(allowed =>
+            allowed.subject === subj.subject
+          )
+        );
+        
+        // Filter classes based on user's allowed classes/sections
+        accessibleClass = studentClassdata.filter(classItem =>
+          user.allowedSubjects && user.allowedSubjects.some(allowed =>
+            allowed.studentClass === classItem.studentClass && 
+            allowed.section === classItem.section
+          )
+        );
+        
+        console.log('Filtered subjects:', accessibleSubject.length);
+        console.log('Filtered classes:', accessibleClass.length);
+      }
+    } else {
+      // If no user is found, return all data (default admin view)
+      console.log('No user found in request, returning all data');
+      accessibleSubject = subjects;
+      accessibleClass = studentClassdata;
+    }
+    
     return {
-      subjects,
-      studentClassdata,
+      subjects: accessibleSubject,
+      studentClassdata: accessibleClass,
       terminals
     };
   } catch (error) {
@@ -39,6 +82,63 @@ const getSidenavData = async () => {
     };
   }
 };
+exports.allowedSubjectData = (user, subjects, studentClass, section) => {
+  if (user.role === "ADMIN") {
+    // Admin has access to everything, so return all subjects/classes/sections as arrays from DB
+    // Assuming subjects param is array of all subject docs from DB
+    const allSubjects = Array.isArray(subjects)
+      ? subjects.map(s => s.subject)
+      : [subjects];
+
+    // For classes and sections, collect unique from user's allowedSubjects or all if admin
+    // For demo, returning '*'
+    return {
+      accessibleSubjects: allSubjects,
+      accessibleClasses: ['*'],
+      accessibleSections: ['*']
+    };
+  }
+
+  // Normalize allowedSubjects for easy lookup
+  const allowedSubs = user.allowedSubjects.map(a => a.subject);
+  const allowedClasses = user.allowedSubjects.map(a => a.studentClass);
+  const allowedSections = user.allowedSubjects.map(a => a.section);
+
+  // Filter subjects param based on allowedSubjects
+  let filteredSubjects = [];
+
+  if (Array.isArray(subjects)) {
+    filteredSubjects = subjects
+      .filter(s => allowedSubs.includes(s.subject))
+      .map(s => s.subject);
+  } else if (typeof subjects === 'string') {
+    if (allowedSubs.includes(subjects)) filteredSubjects.push(subjects);
+  }
+
+  // Filter classes
+  let filteredClasses = [];
+  if (studentClass) {
+    filteredClasses = allowedClasses.includes(studentClass) ? [studentClass] : [];
+  } else {
+    filteredClasses = Array.from(new Set(allowedClasses));
+  }
+
+  // Filter sections
+  let filteredSections = [];
+  if (section) {
+    filteredSections = allowedSections.includes(section) ? [section] : [];
+  } else {
+    filteredSections = Array.from(new Set(allowedSections));
+  }
+
+  return {
+    accessibleSubjects: Array.from(new Set(filteredSubjects)),
+    accessibleClasses: Array.from(new Set(filteredClasses)),
+    accessibleSections: Array.from(new Set(filteredSections))
+  };
+};
+
+
 
 const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
   // to Check if model already exists
@@ -88,13 +188,38 @@ const getSubjectData = async (subjectinput, forClass, res) => {
   }
 };
 exports.homePage = async (req, res, next) => {
+
+  
   const subject = await subjectlist.find({}).lean();
+
   const studentClassdata = await studentClass.find({}).lean();
   const terminals = await terminal.find({}).lean();
+  const user = req.user;
+  let accessibleSubject =[];
+  let accessibleClass=[];
+  if(user.role==="ADMIN")
+  {
+    accessibleSubject = subject;
+    accessibleClass = studentClassdata;
+  }
+  else
+  {
+   accessibleSubject = subject.filter(subject =>
+      user.allowedSubjects.some(allowed =>
+        allowed.subject === subject.subject
+      )
+    );
+    accessibleClass = studentClassdata.filter(studentclass =>
+      user.allowedSubjects.some(allowed =>
+        allowed.studentClass === studentclass.studentClass &  allowed.section === studentclass.section
+      )
+    );
+  }
+ 
   res.render("index", { 
     currentPage: "home",
-    subjects: subject, 
-    studentClassdata,
+    subjects: accessibleSubject, 
+    studentClassdata:accessibleClass,
     terminals 
   });
 };
@@ -122,7 +247,7 @@ exports.editStudent = async (req, res, next) => {
     res.render("admin/edit-student", { 
       student: studentToEdit,
       controller,
-      ...(await getSidenavData())
+      ...(await getSidenavData(req))
     });
   } catch (err) {
     console.error(`Error editing student: ${err.message}`);
@@ -206,7 +331,7 @@ exports.teacherPage = async (req, res, next) => {
   const { controller } = req.params;
   
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
   
   res.render("teacher", { 
     controller, 
@@ -222,12 +347,29 @@ exports.studentclass = async (req, res, next) => {
   const { subject, controller } = req.params;
 
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
+   const user = req.user;
+
+  let accessibleClass=[];
+  if(user.role==="ADMIN")
+  {
+   
+    accessibleClass = studentClassdata;
+  }
+  else
+  {
+   
+    accessibleClass = studentClassdata.filter(studentclass =>
+      user.allowedSubjects.some(allowed =>
+        allowed.studentClass === studentclass.studentClass  && allowed.section === studentclass.section
+      )
+    );
+  }
 
   res.render("class", { 
     subject, 
     controller, 
-    studentClassdata,
+    studentClassdata: accessibleClass,
     ...sidenavData 
   });
 };
@@ -236,7 +378,7 @@ exports.terminal = async (req, res, next) => {
   const terminalList = await terminal.find({}).lean();
   
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
   
   res.render("terminal", { 
     subject, 
@@ -251,7 +393,10 @@ exports.terminal = async (req, res, next) => {
 
 exports.showForm = async (req, res, next) => {
   const { subjectinput,studentClass, section, terminal } = req.params;
+  const user = req.user
+
 const subjects = await subjectlist.find({ forClass: `${studentClass}`, subject: `${subjectinput}` })
+
   const model = getSubjectModel(subjectinput, studentClass, section, terminal);
       const totalcountmarks = await model.find({ subject: `${subjectinput}`, section: `${section}`, terminal: `${terminal}`, studentClass: `${studentClass}` },
       { roll: 1, name: 1 ,totalMarks: 1,_id:1,studentClass:1,section:1,subject:1}).lean();
@@ -308,7 +453,7 @@ const subjects = await subjectlist.find({ forClass: `${studentClass}`, subject: 
       totalEntries,
       forClass: studentClass,
       totalcountmarks,
-      ...(await getSidenavData())
+      ...(await getSidenavData(req))
     });
   }
 };
@@ -334,7 +479,7 @@ exports.saveForm = async (req, res, next) => {
         section,
         terminal,
         forClass: studentClass,
-        ...(await getSidenavData())
+        ...(await getSidenavData(req))
       });
     } catch (err) {
       console.log(err);
@@ -688,7 +833,7 @@ classlistData,
       fileStatus, // Pass file status to view
       originalFile: paper?.questionPaperOfClass || '', // Pass original filename for display
       total,
-      ...(await getSidenavData())
+      ...(await getSidenavData(req))
     });
 } catch (err) {
   console.error(`Error fetching question paper for ${subjectinput} in class ${studentClass}: ${err.message}`);
@@ -706,7 +851,7 @@ classlistData,
 
 
 exports.termwisestatus = async (req,res,next)=>{
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
   res.render('termstatus', { ...sidenavData });
 };
 
@@ -778,7 +923,7 @@ const model = getSubjectModel(subjectinput,studentClass,section,terminal);
         });
       }
     }
-    res.render('termwiseanalysis',{term,status,...(await getSidenavData())})
+    res.render('termwiseanalysis',{term,status,...(await getSidenavData(req))})
   }catch(err)
   {
     console.log(err)
@@ -841,7 +986,7 @@ exports.termdetail = async (req,res,next)=>
           });
           
           
-      res.render('termdetail',{term,subjectinput,studentClass,section,status,qno,terminal,questionNo,...(await getSidenavData())})
+      res.render('termdetail',{term,subjectinput,studentClass,section,status,qno,terminal,questionNo,...(await getSidenavData(req))})
     }catch(err)
     {
       console.log(err)
@@ -875,7 +1020,7 @@ exports.search = async (req, res, next) => {
     studentClass,
     section,
     terminal,
-    ...(await getSidenavData())
+    ...(await getSidenavData(req))
   });
 };
 exports.studentData = async (req, res, next) => {
@@ -898,7 +1043,7 @@ exports.studentData = async (req, res, next) => {
     studentClass,
     section,
     terminal,
-    ...(await getSidenavData())
+    ...(await getSidenavData(req))
   });
 };
 
@@ -954,7 +1099,7 @@ exports.studentData = async (req, res, next) => {
         section,
         terminal,
         incorrectdata,  // Pass incorrect answers list to the frontend
-        ...(await getSidenavData())
+        ...(await getSidenavData(req))
       });
   
     } catch (error) {
@@ -1014,3 +1159,4 @@ else
   res.json(false)
 }
 };
+

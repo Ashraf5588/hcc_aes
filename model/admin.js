@@ -20,10 +20,12 @@ const teacherSchema = new mongoose.Schema({
   "allowedSubjects": [{
     "subject": String,
     "studentClass": String,
+    "section": String,
   }],
 
   "username": String,
   "password": String,
+  tokenVersion: { type: Number, default: "1" },
 
 }, { strict: false });
 

@@ -399,6 +399,122 @@
                 </div>
             </form>
         </div>
+        <center>Add new Student or Edit </center>
+
+<form action="/studentrecord" method="POST">
+    <input type="text" name="reg" id="reg" placeholder="Registration Number">
+    <input type="text" name="name" id="name" placeholder="Name">
+    <input type="roll" name="roll" id="roll" placeholder="Roll Number">
+    <input type="text" name="studentClass" id="studentClass" placeholder="Class">
+    <input type="text" name="section" id="section" placeholder="Section">
+</form>
+        <table cellspacing="0" class="table table-striped" style="background-color: white;" id="studentrecordTable">
+    <thead>
+        <tr>
+            <th>Reg.No</th>
+            <th>Roll Number</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Section</th>
+
+        </tr>
+    </thead>
+    <tbody>
+        <% studentRecord.forEach(record => { %>
+            <tr>
+                <td><%=record.reg%></td>
+                <td><%= record.roll %></td>
+                <td><%= record.name %></td>
+                <td><%= record.studentClass %></td>
+                <td><%= record.section %></td>
+              
+            </tr>
+        <% }) %>
+    </tbody>
+</table>
+<script>
+document.getElementById('studentrecordTable').addEventListener('dblclick', function(event) {
+    if (event.target.tagName === 'TD') {
+        const cell = event.target;
+        const row = cell.parentElement;
+        const originalText = cell.innerText.trim();
+
+        // Create an input element with the current text as its value
+        const input = document.createElement('input');
+        input.value = originalText;
+        input.style.width = '100%';  // Make the input fill the cell
+        input.style.border = 'none';
+        input.style.padding = '5px';
+        input.style.fontSize = '1rem';
+        cell.innerHTML = '';  // Clear current cell content
+        cell.appendChild(input);
+
+        // Focus on the input field
+        input.focus();
+
+        // When the user leaves the input (blur event), save the new value
+        input.addEventListener('blur', function() {
+            const newValue = input.value.trim();
+
+            if (newValue !== originalText) {
+                // Update the cell with the new value
+                cell.innerHTML = newValue;
+
+                // Here, you would send an AJAX request to update the record in the database
+                const rowData = {
+                    regNo: row.cells[0].innerText.trim(),
+                    rollNumber: row.cells[1].innerText.trim(),
+                    name: row.cells[2].innerText.trim(),
+                    studentClass: row.cells[3].innerText.trim(),
+                    section: row.cells[4].innerText.trim()
+                };
+
+                // Send updated data to the backend via AJAX (Example using Fetch API)
+                fetch('/update-student-record', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        regNo: rowData.regNo,
+                        column: getColumnIndex(cell),
+                        newValue: newValue
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Record updated successfully');
+                    } else {
+                        alert('Error updating record');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating record');
+                });
+            } else {
+                // If no change, revert to original text
+                cell.innerHTML = originalText;
+            }
+        });
+
+        // Optional: Allow pressing 'Enter' to save the value
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                input.blur();  // Trigger blur event to save the value
+            }
+        });
+    }
+});
+
+// Helper function to determine which column was edited
+function getColumnIndex(cell) {
+    const columnHeaders = ['Reg.No', 'Roll Number', 'Name', 'Class', 'Section'];
+    const index = Array.from(cell.parentElement.parentElement.rows[0].cells).indexOf(cell);
+    return columnHeaders[index];
+}
+</script>
 
         <!-- Danger Zone -->
         <div class="card danger-zone">

@@ -17,7 +17,8 @@
       studentClassdata: studentClassdata,
       terminals: terminals 
   }) %>
-  
+
+
   <div class="subject-container">
   <h1 class="subject-title">Welcome to <span>Subject Management,</span></h1>
     <!-- Creating form dynamically popup input fields -->  <script>
@@ -461,9 +462,10 @@
     <label for="subject">Please Choose the Subject to Set Format:</label>
    <select name="subject" id="subject">
             <option value="" disabled selected>--Select a subject--</option>
-             <% newsubjectList.forEach(function(subject) { %>
-               <option value="<%= subject.newsubject %>" <%= editing && subjectedit.subject === subject.newsubject ? 'selected' : '' %> >
-                 <%= subject.newsubject %>
+            <% uniqueSubjects = new Set(newsubjectList.map(item => item.newsubject)); %>
+             <% uniqueSubjects.forEach(function(subject) { %>
+               <option value="<%= subject %>" <%= editing && subjectedit.subject === subject ? 'selected' : '' %> >
+                 <%= subject %>
                </option>
              <% }); %>
            
@@ -800,7 +802,7 @@ if (editing === 'true') {
   const orderedKeys = ['subject', 'forClass','max'];
 
   // Get all numeric or other keys that are not subject/forClass/_id/__v
-  const otherKeys = [...new Set(subjects.flatMap(Object.keys))]
+  const otherKeys = [...new Set(subjectsformat.flatMap(Object.keys))]
     .filter(key => !orderedKeys.includes(key) && key !== "__v" && key !== "_id")
     .sort((a, b) => parseInt(a) - parseInt(b)); // Sort numeric keys
 
@@ -813,7 +815,11 @@ if (editing === 'true') {
       <thead class="table-dark">
         <tr>
           <% allKeys.forEach((key) => { %>
-            <th scope="col"><%= key.charAt(0).toUpperCase() + key.slice(1) %></th>
+            <% if (!isNaN(parseInt(key))) { %>
+              <th scope="col">Q.No. <%= key %></th>
+            <% } else { %>
+              <th scope="col"><%= key.charAt(0).toUpperCase() + key.slice(1) %></th>
+            <% } %>
           <% }); %>
           <th scope="col">Question Paper</th>
           <th scope="col" class="action-column">Action</th>
@@ -821,10 +827,36 @@ if (editing === 'true') {
       </thead>
 
       <tbody>
-        <% subjects.forEach((sub) => { %>
+        <% 
+          // Sort by subject (alphabetically), then by forClass (numerically)
+          const sortedSubjects = subjectsformat.slice().sort((a, b) => {
+            if (a.subject < b.subject) return -1;
+            if (a.subject > b.subject) return 1;
+            return (parseInt(a.forClass) || 0) - (parseInt(b.forClass) || 0);
+          });
+          sortedSubjects.forEach((sub) => { %>
           <tr>
             <% allKeys.forEach((key) => { %>
-              <td><%= sub[key] %></td> <!-- Access the value of each key in the document -->
+              <% if (!isNaN(parseInt(key)) && Array.isArray(sub[key])) { %>
+                <td>
+                  <% if (typeof sub[key][0] !== 'undefined' && sub[key][0] !== null && sub[key][0] !== '') { %>
+                    <div><b>Total sub question = <%= sub[key][0] %></b></div>
+                  <% } else { %>
+                    <div>&nbsp;</div>
+                  <% } %>
+                  <% for (let i = 1; i < sub[key].length; i++) { %>
+                    <div>
+                      <% if (typeof sub[key][i] !== 'undefined' && sub[key][i] !== null && sub[key][i] !== '') { %>
+                        Q<%= key %><%= String.fromCharCode(96 + i) %>: <%= sub[key][i] %>
+                      <% } else { %>
+                        &nbsp;
+                      <% } %>
+                    </div>
+                  <% } %>
+                </td>
+              <% } else { %>
+                <td><%= (typeof sub[key] !== 'undefined' && sub[key] !== null && sub[key] !== '') ? sub[key] : '' %></td>
+              <% } %>
             <% }); %>
             <td>
               <% if (sub.questionPaperOfClass && sub.questionPaperOfClass !== 'default.pdf') { %>

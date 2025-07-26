@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirect Example</title>
+</head>
+<body>
+  <p>Please choose class and section:</p>
+  
+  <label for="class">Class:</label>
+  <select name="class" id="class">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+  </select>
+
+  <label for="section">Section:</label>
+  <select name="section" id="section">
+    <option value="Moon">Moon</option>
+    <option value="Sun">Sun</option>
+    <option value="x">X</option>
+  </select>
+  <select name="terminal" id="terminal">
+    <option value="FIRST">First Term</option>
+    <option value="SECOND">Second Term</option>
+    <option value="THIRD">Third Term</option>
+  </select>
+
+  <button onclick="generate()">Generate</button>
+
+  <script>
+    function generate() {
+      const classValue = document.getElementById('class').value;
+      const sectionValue = document.getElementById('section').value;
+     const terminalValue = document.getElementById('terminal').value;
+      const redirectUrl = `/marksheet?studentClass=${classValue}&section=${sectionValue}&terminal=${terminalValue}`;
+      window.location.href = redirectUrl;
+    }
+  </script>
+<table border="1" cellpadding="10" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Roll No</th>
+      <th>Name</th>
+      <% subjectname.forEach(sub => { %>
+        <th><%= sub %>(TH)</th>
+        <th><%= sub %>(PR)</th>
+        <th>Total</th>
+        <th>Grade</th>
+      <% }) %>
+    </tr>
+  </thead>
+  <tbody>
+
+  <% Object.keys(students).forEach(studentName => { %>
+    <tr>
+      <td><%= students[studentName].roll %></td>
+      <td><%= studentName %></td>
+      <% subjectname.forEach(sub => {
+           const subjData = students[studentName][sub] || {};
+      %>
+        <td><%= subjData.theory || '' %></td>
+        <td><%= subjData.practical || '' %></td>
+        <td><%= subjData.total || '' %></td>
+        <td><%= subjData.grade || '' %></td>
+      <% }) %>
+    </tr>
+  <% }) %>
+</tbody>
+
+
+</table>
+
+</body>
+</html>

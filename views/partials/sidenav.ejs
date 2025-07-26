@@ -414,24 +414,26 @@
         </button>
         <div class="submenu" id="student-forms">
           <% if (typeof subjects !== 'undefined' && subjects && subjects.length > 0) { %>
-            <% const uniqueSubjects = [...new Set(subjects.map(item => item.subject))]; %>
+            <% const uniqueSubjects = [...new Set(subjects.map(item => item.subject).filter(Boolean))]; %>
             <% uniqueSubjects.forEach((sub) => { %>
-              <div class="nav-item">
-                <button class="nav-link has-submenu" data-submenu="form-<%= sub.replace(/\s+/g, '-') %>">
-                  <i class="fas fa-file-edit"></i>
-                  <%= sub %>
-                </button>
-                <div class="submenu subject-submenu" id="form-<%= sub.replace(/\s+/g, '-') %>">
-                  <% if (typeof studentClassdata !== 'undefined' && studentClassdata && studentClassdata.length > 0) { %>
-                    <% studentClassdata.forEach((studentclass) => { %>
-                      <button class="nav-link" onclick="selectTerminalForForm('<%= sub %>', '<%= studentclass.studentClass %>', '<%= studentclass.section %>')">
-                        <i class="fas fa-pencil-alt"></i>
-                        Class <%= studentclass.studentClass %>-<%= studentclass.section %>
-                      </button>
-                    <% }) %>
-                  <% } %>
+              <% if (sub && typeof sub === 'string') { %>
+                <div class="nav-item">
+                  <button class="nav-link has-submenu" data-submenu="form-<%= sub.replace(/\s+/g, '-') %>">
+                    <i class="fas fa-file-edit"></i>
+                    <%= sub %>
+                  </button>
+                  <div class="submenu subject-submenu" id="form-<%= sub.replace(/\s+/g, '-') %>">
+                    <% if (typeof studentClassdata !== 'undefined' && studentClassdata && studentClassdata.length > 0) { %>
+                      <% studentClassdata.forEach((studentclass) => { %>
+                        <button class="nav-link" onclick="selectTerminalForForm('<%= sub %>', '<%= studentclass.studentClass %>', '<%= studentclass.section %>')">
+                          <i class="fas fa-pencil-alt"></i>
+                          Class <%= studentclass.studentClass %>-<%= studentclass.section %>
+                        </button>
+                      <% }) %>
+                    <% } %>
+                  </div>
                 </div>
-              </div>
+              <% } %>
             <% }) %>
           <% } %>
         </div>
@@ -453,29 +455,31 @@
         </button>
         <div class="submenu" id="data-entry">
           <% if (typeof subjects !== 'undefined' && subjects && subjects.length > 0) { %>
-            <% const uniqueSubjects = [...new Set(subjects.map(item => item.subject))]; %>
+            <% const uniqueSubjects = [...new Set(subjects.map(item => item.subject).filter(Boolean))]; %>
             <% uniqueSubjects.forEach((sub) => { %>
-              <div class="nav-item">
-                <button class="nav-link has-submenu" data-submenu="subject-<%= sub.replace(/\s+/g, '-') %>">
-                  <i class="fas fa-book"></i>
-                  <%= sub %>
-                </button>
-                <div class="submenu subject-submenu" id="subject-<%= sub.replace(/\s+/g, '-') %>">
-                  <% if (typeof studentClassdata !== 'undefined' && studentClassdata && studentClassdata.length > 0) { %>
-                    <% studentClassdata.forEach((studentclass) => { %>
-                      <button class="nav-link" onclick="selectTerminalForEntry('<%= sub %>', '<%= studentclass.studentClass %>', '<%= studentclass.section %>')">
-                        <i class="fas fa-users"></i>
-                        Class <%= studentclass.studentClass %>-<%= studentclass.section %>
-                      </button>
-                    <% }) %>
-                  <% } else { %>
-                    <div class="nav-link">
-                      <i class="fas fa-exclamation-circle"></i>
-                      No classes available
-                    </div>
-                  <% } %>
+              <% if (sub && typeof sub === 'string') { %>
+                <div class="nav-item">
+                  <button class="nav-link has-submenu" data-submenu="subject-<%= sub.replace(/\s+/g, '-') %>">
+                    <i class="fas fa-book"></i>
+                    <%= sub %>
+                  </button>
+                  <div class="submenu subject-submenu" id="subject-<%= sub.replace(/\s+/g, '-') %>">
+                    <% if (typeof studentClassdata !== 'undefined' && studentClassdata && studentClassdata.length > 0) { %>
+                      <% studentClassdata.forEach((studentclass) => { %>
+                        <button class="nav-link" onclick="selectTerminalForEntry('<%= sub %>', '<%= studentclass.studentClass %>', '<%= studentclass.section %>')">
+                          <i class="fas fa-users"></i>
+                          Class <%= studentclass.studentClass %>-<%= studentclass.section %>
+                        </button>
+                      <% }) %>
+                    <% } else { %>
+                      <div class="nav-link">
+                        <i class="fas fa-exclamation-circle"></i>
+                        No classes available
+                      </div>
+                    <% } %>
+                  </div>
                 </div>
-              </div>
+              <% } %>
             <% }) %>
           <% } else { %>
             <div class="nav-link">
@@ -593,19 +597,9 @@
         </a>
       </div>
       
-      <div class="nav-item">
-        <a href="/teacher/login" class="nav-link">
-          <i class="fas fa-chalkboard-teacher"></i>
-          Teacher Login
-        </a>
-      </div>
+     
       
-      <div class="nav-item">
-        <a href="/student/login/home" class="nav-link">
-          <i class="fas fa-user-graduate"></i>
-          Student Login
-        </a>
-      </div>
+
     </div>
   </nav>
 

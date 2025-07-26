@@ -31,6 +31,13 @@ const subjectSchema = new mongoose.Schema({
   '23':{type:[String],required: false},
   '24':{type:[String],required: false},
   '25':{type:[String],required: false},
+  '26':{type:[String],required: false},
+  '27':{type:[String],required: false},
+  '28':{type:[String],required: false},
+  '29':{type:[String],required: false},
+  '30':{type:[String],required: false},
+  
+
 
 },{strict:false})
 const classSchema = new mongoose.Schema({
@@ -47,6 +54,7 @@ const terminalSchema = new mongoose.Schema({
 })
 
 const studentrecordschema = new mongoose.Schema({
+  "reg": { type: String, required: false },
   "name":{ type: String,required: false},
   "studentClass":{ type: String,required: false},
   "section":{ type: String,required: false},
@@ -54,6 +62,11 @@ const studentrecordschema = new mongoose.Schema({
 })
 const newsubjectSchema = new mongoose.Schema({
   "subject":{ type: String,required: false},
+  "forClass":{ type: String,required: false},
+  "theory":{ type: Number,required: false},
+  "practical":{ type: Number,required: false},
+  "total":{ type: Number,required: false},
+  "passingMarks":{ type: Number,required: false},
 
 },{strict:false})
 module.exports = {subjectSchema,classSchema,terminalSchema,studentrecordschema,newsubjectSchema};

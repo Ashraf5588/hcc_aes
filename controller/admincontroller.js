@@ -7,6 +7,7 @@ const bs = require("bikram-sambat-js")
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const { rootDir } = require("../utils/path");
+const {marksheetSchema} = require("../model/masrksheetschema");
 const { classSchema, subjectSchema, terminalSchema,newsubjectSchema } = require("../model/adminschema");
 const { adminSchema,superadminSchema, teacherSchema} = require("../model/admin");
 const { studentSchema } = require("../model/schema");
@@ -14,6 +15,10 @@ const student = require("../routers/mainpage");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const userlist = mongoose.model("userlist", teacherSchema, "users");
+const bcrypt = require("bcrypt");
+const {allowedSubjectData} = require("./controller");
+const {generateToken} = require("../middleware/auth");
+
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 
@@ -24,15 +29,59 @@ const fs = require('fs')
 // Configure storage with better file naming
 
 // Helper function to fetch sidenav data
-const getSidenavData = async () => {
+const getSidenavData = async (req) => {
   try {
-    const subjects = await subject.find({}).lean();
+    const subjects = await newsubject.find({}).lean();
+    console.log(subjects)
     const studentClassdata = await studentClass.find({}).lean();
     const terminals = await terminal.find({}).lean();
     
+    let accessibleSubject = [];
+    let accessibleClass = [];
+    
+    // Check if req exists and has user property
+    if (req && req.user) {
+      const user = req.user;
+      // Log user info for debugging
+      if (user && user.role) {
+        console.log('User role:', user.role);
+        console.log('User allowed subjects:', user.allowedSubjects || []);
+      } else {
+        console.log('User object exists but missing role or allowedSubjects');
+      }
+      
+      if (user.role === "ADMIN") {
+        accessibleSubject = subjects;
+        accessibleClass = studentClassdata;
+      } else {
+        // Filter subjects based on user's allowed subjects
+        accessibleSubject = subjects.filter(subj =>
+          user.allowedSubjects && user.allowedSubjects.some(allowed =>
+            allowed.subject === subj.newsubject && allowed.studentClass === subj.forClass
+          )
+        );
+        
+        // Filter classes based on user's allowed classes/sections
+        accessibleClass = studentClassdata.filter(classItem =>
+          user.allowedSubjects && user.allowedSubjects.some(allowed =>
+            allowed.studentClass === classItem.studentClass && 
+            allowed.section === classItem.section
+          )
+        );
+        
+        console.log('Filtered subjects:', accessibleSubject.length);
+        console.log('Filtered classes:', accessibleClass.length);
+      }
+    } else {
+      // If no user is found, return all data (default admin view)
+      console.log('No user found in request, returning all data');
+      accessibleSubject = subjects;
+      accessibleClass = studentClassdata;
+    }
+    
     return {
-      subjects,
-      studentClassdata,
+      subjects: accessibleSubject,
+      studentClassdata: accessibleClass,
       terminals
     };
   } catch (error) {
@@ -44,7 +93,55 @@ const getSidenavData = async () => {
     };
   }
 };
-
+const getSubjectModelPractical = (subjectinput, studentClass, section, terminal, type, year) => {
+  const modelName = `${subjectinput}_${studentClass}_${section}_${terminal}_${type}_${year}`;
+  
+  // Check if model already exists
+  if (mongoose.models[modelName]) {
+    return mongoose.models[modelName];
+  }
+  
+  // Create a new schema with roll as unique index to prevent duplicates
+  const practicalSchema = new mongoose.Schema({
+    ...marksheetSchema.obj,
+    roll: { 
+      type: String, 
+      required: true,
+      unique: true // Enforce uniqueness at schema level
+    },
+    lastUpdated: { 
+      type: Date, 
+      default: Date.now 
+    }
+  });
+  
+  // Explicitly ensure roll is a unique index
+  practicalSchema.index({ roll: 1 }, { 
+    unique: true,
+    background: true,
+    name: "unique_roll_index"
+  });
+  
+  // Add a compound index for better query performance
+  practicalSchema.index({ 
+    studentClass: 1, 
+    section: 1, 
+    terminal: 1 
+  }, { 
+    background: true,
+    name: "class_section_terminal_index"
+  });
+  
+  // Create and return the model with unique index on roll
+  const model = mongoose.model(modelName, practicalSchema, modelName);
+  
+  // Ensure indexes are applied
+  model.createIndexes().catch(err => {
+    console.error(`Error creating indexes for ${modelName}:`, err);
+  });
+  
+  return model;
+};
 // Create mongoose models
 const subject = mongoose.model("subject", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
@@ -157,91 +254,32 @@ exports.adminlogin = async (req, res, next) => {
 exports.adminloginpost = async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    const user = await superadmin.findOne({
-      username: `${username}`,
-      password: `${password}`,
-    });
-    if (!user) {
-      res.render("admin/invalid");
-    } else {
-      const token = jwt.sign(
-        { user: user.username, role: user.role },
-        "mynameisashraf!23_9&",
-        { expiresIn: "1440h" }
-      );
+    
+
+
+const user = await userlist.findOne({ username });
+
+if (!user) return res.render("admin/invalid",{message: "Invalid username"});
+const isMatch = await bcrypt.compare(password, user.password);
+if (!isMatch) return res.render("admin/invalid",{message: "Invalid password"});
+
+const token = generateToken(user);
+
+
+
       console.log("Generated Token:", token); // Log the generated token
-
-      res.cookie("token", token, { httpOnly: true, secure: false });
-      res.redirect("/admin/term/FIRST");
-    }
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-
-exports.teacherlogin = async (req, res, next) => {
-  try {
-    res.render("admin/teacherlogin");
-  } catch (err) {
-    console.log(err);
-  }
-};
-exports.teacherloginpost = async (req, res, next) => {
-  try {
-    const { username, password } = req.body;
-    const user = await admin.findOne({
-      username: `${username}`,
-      password: `${password}`,
+  res.cookie("token", token, {
+      httpOnly: true,  // prevent JavaScript access
+      secure: false,   // change to true if using HTTPS
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
-    if (!user) {
-      res.render("admin/invalid");
-    } else {
-      const teachertoken = jwt.sign(
-        { user: user.username, role: user.role },
-        "mynameisashrafteacher!23_9&",
-        { expiresIn: "1440h" }
-      );
-      // Log the generated token
-
-      res.cookie("teachertoken", teachertoken, { httpOnly: true, secure: false });
-      res.redirect("/teacher/findData");
+      return res.redirect("/");
     }
-  } catch (err) {
+   catch (err) {
     console.log(err);
   }
 };
-exports.studentlogin = async (req, res, next) => {
-  try {
-    res.render("admin/studentlogin");
-  } catch (err) {
-    console.log(err);
-  }
-};
-exports.studentloginpost = async (req, res, next) => {
-  try {
-    const { username, password } = req.body;
-    const user = await admin.findOne({
-      username: `${username}`,
-      password: `${password}`,
-    });
-    if (!user) {
-      res.render("admin/invalid");
-    } else {
-      const studenttoken = jwt.sign(
-        { user: user.username, role: user.role },
-        "mynameisashrafstudent!23_9&",
-        { expiresIn: "1440h" }
-      );
-      console.log("Generated Token:", studenttoken); // Log the generated token
 
-      res.cookie("studenttoken", studenttoken, { httpOnly: true, secure: false });
-      res.redirect("/");
-    }
-  } catch (err) {
-    console.log(err);
-  }
-};
 
 
 exports.admin = async (req, res, next) => {
@@ -270,81 +308,84 @@ subjectMappings.forEach(sub => {
 
     console.log(`🗺️ Subject mappings:`, allowedSubjectsMap);
 
-    // Populate entryArray with improved error handling
-    for (const sub of subjects) {
-      console.log(`\n📖 Processing subject: ${sub.subject}`);
-      
-      for (const stuclass of studentClasslist) {
-        const section = stuclass.section;
-        const studentClass = stuclass.studentClass;
+    // Optimized batch processing for entry counts
+    const db = mongoose.connection.db;
+    const batchSize = 50; // Process in batches to avoid memory issues
+    entryArray = [];
 
-        console.log(`  🔍 Checking class ${studentClass}, section ${section}`);
+    // Process subjects in batches
+    for (let i = 0; i < subjects.length; i += batchSize) {
+      const batchSubjects = subjects.slice(i, i + batchSize);
+      const batchPromises = [];
 
-        // Check if this subject is allowed for this class
-        if (!allowedSubjectsMap[sub.subject]?.includes(studentClass.toString())) {
-          console.log(`  ⏭️  Skipping ${sub.subject} for class ${studentClass} (not in allowed classes)`);
-          continue;
-        }
+      for (const sub of batchSubjects) {
+        for (const stuclass of studentClasslist) {
+          const section = stuclass.section;
+          const studentClass = stuclass.studentClass;
 
-        const modelName = `${sub.subject}_${studentClass}_${section}_${terminal}`;
-        console.log(`  📊 Model name: ${modelName}`);
-
-        try {
-          // Check if collection exists first
-          const db = mongoose.connection.db;
-          const collections = await db.listCollections({ name: modelName }).toArray();
-          
-          if (collections.length === 0) {
-            console.log(`  ⚠️  Collection ${modelName} doesn't exist, setting count to 0`);
+          // Skip if subject not allowed for this class
+          if (!allowedSubjectsMap[sub.subject]?.includes(studentClass.toString())) {
             entryArray.push({
-              studentClass: studentClass,
-              section: section,
+              studentClass,
+              section,
               subject: sub.subject,
-              terminal: terminal,
+              terminal,
               totalentry: 0,
             });
             continue;
           }
 
-          // Create or get existing model
-          const model = mongoose.models[modelName] ||
-                        mongoose.model(modelName, studentSchema, modelName);
+          const modelName = `${sub.subject}_${studentClass}_${section}_${terminal}`;
+          
+          // Create a promise for this collection check and count
+          const processPromise = (async () => {
+            try {
+              const collections = await db.listCollections({ name: modelName }).toArray();
+              
+              if (collections.length === 0) {
+                return {
+                  studentClass,
+                  section,
+                  subject: sub.subject,
+                  terminal,
+                  totalentry: 0,
+                };
+              }
 
-          // Query the collection with better error handling
-          const totalstudentthirdterminal = await model.aggregate([
-            { 
-              $match: { 
-                section: section,
-                terminal: terminal,
-                studentClass: studentClass
-              } 
-            },
-            { $count: "count" },
-          ]);
+              // Use collection directly instead of creating model for better performance
+              const collection = db.collection(modelName);
+              const count = await collection.countDocuments({
+                section,
+                terminal,
+                studentClass
+              });
 
-          const totalentry = totalstudentthirdterminal[0]?.count || 0;
-          console.log(`  ✅ Found ${totalentry} students`);
+              return {
+                studentClass,
+                section,
+                subject: sub.subject,
+                terminal,
+                totalentry: count,
+              };
+            } catch (error) {
+              console.error(`Error processing ${modelName}:`, error.message);
+              return {
+                studentClass,
+                section,
+                subject: sub.subject,
+                terminal,
+                totalentry: 0,
+              };
+            }
+          })();
 
-          entryArray.push({
-            studentClass: studentClass,
-            section: section,
-            subject: sub.subject,
-            terminal: terminal,
-            totalentry: totalentry,
-          });
-
-        } catch (modelError) {
-          console.error(`  ❌ Error querying ${modelName}:`, modelError.message);
-          // Add entry with 0 count if there's an error
-          entryArray.push({
-            studentClass: studentClass,
-            section: section,
-            subject: sub.subject,
-            terminal: terminal,
-            totalentry: 0,
-          });
+          batchPromises.push(processPromise);
         }
       }
+
+      // Wait for all promises in this batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      entryArray.push(...batchResults);
     }
 
     console.log(`\n📋 Total entries processed: ${entryArray.length}`);
@@ -400,7 +441,7 @@ subjectMappings.forEach(sub => {
     const studentClassdata = await studentClass.find({});
     
     // Get sidenav data
-    const sidenavData = await getSidenavData();
+    const sidenavData = await getSidenavData(req);
     
     console.log(`\n🎯 Final data summary:`);
     console.log(`  - Subjects: ${subjects.length}`);
@@ -429,21 +470,56 @@ subjectMappings.forEach(sub => {
 };
 
 exports.showSubject = async (req, res, next) => {
-  const subjects = await subject.find({}).lean();
+
+  const subjectsformat = await subject.find({}).lean();
+  console.log("Subjects fetched:", subjectsformat);
+
   const studentClassdata = await studentClass.find({});
     const className = req.query.className;
     const newsubjectList = await newsubject.find({}).lean();
-  
+ 
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
+  let accessibleSubjects = [];
+  let newaccessibleSubjects = [];
+  let accessibleClasses = [];
+  const user = req.user;
+if(user.role === 'ADMIN')
+{
+  accessibleSubjects = subjectsformat;
+  newaccessibleSubjects = newsubjectList;
+  accessibleClasses = studentClassdata;
+}
+else
+{
+  accessibleSubjects = subjectsformat.filter(subj =>
+    user.allowedSubjects.some(allowed =>
+      allowed.subject === subj.subject && allowed.studentClass === subj.forClass
+    )
+  );
+
+ newaccessibleSubjects = newsubjectList.filter(subj =>
+  user.allowedSubjects.some(allowed =>
+    allowed.subject === subj.newsubject
+  )
+);
+
+accessibleClasses = studentClassdata.filter(classItem =>
+    user.allowedSubjects && user.allowedSubjects.some(allowed =>
+      allowed.studentClass === classItem.studentClass && 
+      allowed.section === classItem.section
+    )
+  );
   
-  res.render("admin/subjectlist", { 
-    subjects, 
+
+}
+  res.render("admin/subjectlist", {
+    subjectsformat: accessibleSubjects,
     editing: false,
     currentPage: 'adminSubject',
-    studentClassdata,
+    studentClassdata: accessibleClasses,
     className,
-    newsubjectList, 
+    newsubjectList:newaccessibleSubjects,
     ...sidenavData
   });
 };
@@ -705,7 +781,7 @@ exports.showClass = async (req, res, next) => {
   const studentClasslist = await studentClass.find({});
   
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
   
   res.render("admin/classlist", {
     editing: false,
@@ -780,8 +856,9 @@ exports.addClass = async (req, res, next) => {
 exports.addNewSubject = async (req, res, next) => {
   const newsubjectList = await newsubject.find({}).lean();
 
+
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
 
   res.render("admin/newsubject", {
     newsubjectList,
@@ -789,18 +866,37 @@ exports.addNewSubject = async (req, res, next) => {
     ...sidenavData
   });
 }
+exports.copytheory = async (req, res, next) => {
+    const {subject,studentClass} = req.query;
+    console.log("Copying theory for subject:", subject, "and class:", studentClass);
+    if (!subject || !studentClass) {
+      console.error("Missing subject or class parameters");
+      return res.status(400).json({ error: "Missing subject or class parameters" });
+    }
+
+  if(subject && studentClass) {
+  const data = await newsubject.findOne({newsubject:subject,forClass:studentClass}).lean();
+  console.log(data)
+  return res.json(data);
+  }
+}
 exports.addNewSubjectPost = async (req, res, next) => {
   try {
     const { subjectId } = req.params;
     const updatedNewSubject = req.body.newsubject.toUpperCase().trim();
+    const forClass = req.body.forClass ? parseInt(req.body.forClass) : 0;
+    const theory = req.body.theory ? parseFloat(req.body.theory) : 0;
+    const practical = req.body.practical ? parseFloat(req.body.practical) : 0
+    const total = theory + practical;
+    const passingMarks = req.body.passingMarks ? parseFloat(req.body.passingMarks) : 0;
     if (subjectId) {
       await newsubject.findByIdAndUpdate(
         subjectId,
-        { newsubject: `${updatedNewSubject}` },
+        { newsubject: `${updatedNewSubject}`, forClass, theory, practical, total, passingMarks },
         { new: true, runValidators: true }
       );
     } else {
-      await newsubject.create({ newsubject: updatedNewSubject });
+      await newsubject.create({ newsubject: updatedNewSubject, forClass, theory, practical, total, passingMarks });
     }
     res.redirect("/admin/new/subject");
   } catch (err) {
@@ -823,7 +919,7 @@ exports.editNewSubject = async (req, res, next) => {
       subjectId,
       newsubjectData,
       newsubjectList,
-      ...(await getSidenavData())
+      ...(await getSidenavData(req))
     });
   }
   catch (err) {
@@ -842,7 +938,7 @@ exports.addTerminal = async (req, res, next) => {
   const terminalList = await terminal.find({},{ __v: 0 }).lean();
   
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
   
   res.render("admin/terminal", { 
     terminalList, 
@@ -890,7 +986,7 @@ exports.editTerminal = async (req, res, next) => {
       editing,
       terminalData,
       terminalList,
-      ...(await getSidenavData())
+      ...(await getSidenavData(req))
     });
   } catch (err) {
     console.error("Error in addTerminalpost:", err);
@@ -966,16 +1062,21 @@ exports.editSub = async (req, res, next) => {
     console.log("Editing subject:", subjectedit);
       const className = req.query.className;
     // Get student class data for form dropdown
-    const sidenavData = await getSidenavData();
+    const sidenavData = await getSidenavData(req);
+    const newaccessibleSubjects = newsubjectList.filter(subj =>
+  req.user.allowedSubjects.some(allowed =>
+    allowed.subject === subj.newsubject  
+  )
+);
     
     res.render("admin/subjectlist", {
       editing,
       subId,
       subjectedit,
-      subjects,
+      
       studentClassdata,
       className,
-      newsubjectList,
+      newsubjectList: newaccessibleSubjects,
       ...sidenavData
     });
   } catch (err) {
@@ -991,7 +1092,7 @@ exports.editClass = async (req, res, next) => {
   const studentClasslist = await studentClass.find({});
   
   // Get sidenav data
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
   
    res.render("admin/classlist", {
       editing,
@@ -1036,7 +1137,7 @@ exports.cross_sheet = async (req, res, next) => {
   const sortedClassList = classlist.sort((a, b) => Number(a.studentClass) - Number(b.studentClass));
   const sortedsubjectlist = subjectlist.sort((a, b) => Number(a.forClass) - Number(b.forClass));
 
-  const sidenavData = await getSidenavData();
+  const sidenavData = await getSidenavData(req);
   const terminalList = await terminal.find({}).lean();
 
   // 👇 Declare with default value (empty array)
@@ -1079,16 +1180,21 @@ exports.cross_sheet = async (req, res, next) => {
 };
 exports.studentrecord = async (req, res, next) => {
   try {
+      const { studentrecordschema } = require("../model/adminschema");
+    const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
+    const studentRecord = await modal.find({}).lean();
     const year = new Date();
-    const nepaliYear = bs.ADToBS(`${year}`);
+    const nepaliYear = bs.ADToBS(`${year}`).slice(0, 4);
     console.log(nepaliYear);
 
     // Get sidenav data
-    const sidenavData = await getSidenavData();
+    const sidenavData = await getSidenavData(req);
 
     res.render("admin/schoolstudentrecord", {
       editing: false,
       nepaliYear,
+      studentRecord,
+      currentPage: 'studentRecord',
       ...sidenavData
     });
   } catch (err) {
@@ -1120,7 +1226,16 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
   await modal.deleteMany({});
 
   await modal.insertMany(jsonArray);
-  
+     const { regNo, column, newValue } = req.body;
+
+    // Update student record based on regNo and column
+    const updated = updateStudentRecord(regNo, column, newValue);  // Your update function here
+    
+    if (updated) {
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, message: 'Update failed' });
+    }
   // Delete the uploaded file after processing
   fs.unlinkSync(csvFilePath);
  console.log("File uploaded:", req.file);
@@ -1139,15 +1254,17 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
 }
 exports.showuser = async (req, res, next) => {
   try {
+
     const subjects = await subject.find({}).lean();
     const classlist = await studentClass.find({}).lean();
+const aasuser = await userlist.find();
 
-    const sidenavData = await getSidenavData();
+    const sidenavData = await getSidenavData(req);
     res.render("admin/user", {
-     
       editing: false,
       subjects,
       classlist,
+      userlist: aasuser,
       ...sidenavData,
       currentPage: 'adminUser'
     });
@@ -1158,26 +1275,111 @@ exports.showuser = async (req, res, next) => {
 };
 exports.saveuser = async (req, res, next) => {
   try {
+    const { userId } = req.params;
+    const editing = userId ? true : false; // Check if userId exists in params
+    let allowedSubjects = [];
+    allowedSubjects = req.body.allowedSubjects || []; // This should be an array of strings like "subject_class_section"
+    if (typeof allowedSubjects === 'string') {
+      allowedSubjects = [allowedSubjects];
+    }
+     allowedSubjects = allowedSubjects.map(sub => {
+      const [subject, studentClass, section] = sub.split('_');
+      return { subject, studentClass, section };
+    });
     const teacherName = req.body.teacherName.toUpperCase().trim();
     const role = req.body.role.toUpperCase().trim();
     const username = req.body.username.toLowerCase().trim();
-    const password = req.body.password.toLowerCase().trim();
-    
 
-    await userlist.create({
+    // Only handle password if it's provided in the request
+    let updateData = {
       teacherName,
       teacherID: req.body.teacherID,
       role,
-      allowedSubjects: req.body.allowedSubjects, // Assuming this is an array of subjects
-      username,
-      password
+      allowedSubjects,
+      username
+    };
+
+    // For new users or password changes, hash the password
+    if (!editing || (req.body.password && req.body.password.trim())) {
+      const password = req.body.password.toLowerCase().trim();
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+if(editing)
+{
+    if (!userId) {
+      return res.status(400).send("User ID is required for editing");
+    }
+    
+    // Update existing user - only increment tokenVersion if there is any changes 
+   
+      updateData.$inc = { tokenVersion: 1 };
+    
+    
+    const existingUser = await userlist.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    if (!existingUser) {
+      return res.status(404).send("User not found");
+    }
+    console.log("User updated successfully:", existingUser);
+    
+    // Check if this is a password change
+    if (req.body.password && req.body.password.trim()) {
+      // Force the updated user to login again
+      if (req.user && req.user._id && req.user._id.toString() === userId) {
+        // If it's the current user, log them out
+        res.clearCookie('token');
+        return res.redirect("/admin/login");
+      }
+    }
+    // For all other cases, just redirect to user list
+    res.redirect("/user");
+  }
+else
+{
+   // For new users, password is required
+    if (!updateData.password) {
+      return res.status(400).send("Password is required for new users");
+    }
+    
+    const user = await userlist.create({
+      ...updateData,
+      tokenVersion: 1 // Initialize tokenVersion for new users
     });
 
     console.log("User created successfully:", req.body);
-    res.redirect("/admin/user");
+    res.redirect("/user");
+  }
   } catch (err) {
     console.error("Error saving user:", err);
     res.status(500).send("Error saving user: " + err.message);
+  }
+};
+exports.deleteTeacher = async (req, res, next) => {
+  try {
+    const { teacherId } = req.params;
+    if (!teacherId) {
+      return res.status(400).send("User ID is required for deletion");
+    }
+    
+    // Find the user to delete
+    const userToDelete = await userlist.findById(teacherId);
+    if (!userToDelete) {
+      return res.status(404).send("User not found");
+    }
+    
+    // Delete the user
+    await userlist.findByIdAndDelete(teacherId);
+
+    console.log(`User ${userToDelete.teacherName} deleted successfully`);
+    res.redirect("/user");
+
+  } catch (err) {
+    console.error("Error deleting teacher:", err);
+    res.status(500).send("Error deleting teacher: " + err.message);
   }
 };
 
@@ -1384,5 +1586,755 @@ exports.diagnostics = async (req, res, next) => {
       message: error.message,
       stack: error.stack
     });
+  }
+};
+
+  // to Check if model already exists
+    const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
+      // to Check if model already exists
+      if (mongoose.models[`${subjectinput}_${studentClass}_${section}_${terminal}`]) {
+        return mongoose.models[`${subjectinput}_${studentClass}_${section}_${terminal}`];
+      }
+      // Create and return a new model if it doesn't exist
+      return mongoose.model(`${subjectinput}_${studentClass}_${section}_${terminal}`, studentSchema, `${subjectinput}_${studentClass}_${section}_${terminal}`);
+      };
+
+
+
+exports.marksheet = async (req, res, next) => {
+  try {
+     const {studentClass,section,terminal,academicYear} = req.query;
+    const year = new Date();
+    const nepaliYear = academicYear || bs.ADToBS(`${year}`).slice(0, 4);
+    // Get sidenav data
+    const sidenavData = await getSidenavData(req);
+   
+    
+   const cross=[]
+    
+    // Render the marksheet page with sidenav data
+   
+      const subjects = await newsubject.find({forClass:studentClass}, { _id: 0, newsubject: 1,forClass:1, theory: 1, practical: 1, total: 1, passingMarks: 1 });
+      console.log("Subjects for class:", studentClass, subjects);
+      const subjectlist = subjects.map(sub => sub.newsubject);
+    for (const sub of subjectlist) {
+      const model = getSubjectModelPractical(sub, studentClass, section, terminal,"thpr",nepaliYear);
+      const ledgerData = await model.find({}, { _id: 0,totalmarks:1,theory:1,practical:1,name:1,roll:1 }).lean();
+      cross.push({
+      
+        subject: sub,
+        ledgerData: ledgerData
+    });
+  }
+  
+let students = {};
+  const subjectname = cross.map(c=>c.subject);
+cross.forEach(({ subject, ledgerData }) => {
+  ledgerData.forEach(student => {
+    // Initialize student if not exists
+    if (!students[student.name]) {
+      students[student.name] = {
+        roll: student.roll || null
+      };
+    }
+
+    // Initialize subject object if not exists
+    if (!students[student.name][subject]) {
+      students[student.name][subject] = {
+        theory: 0,
+        practical: 0,
+        total: 0
+      };
+    }
+
+    // Add theory & practical marks
+    students[student.name][subject].theory = student.theory || 0;
+    students[student.name][subject].practical = student.practical || 0;
+    students[student.name][subject].total =
+      (student.theory || 0) + (student.practical || 0);
+  });
+});
+
+console.log("Students data:", students);
+
+
+    //from subject list collection subject where class
+
+
+   
+    // Create subject configurations for the marksheet
+
+    // If no configurations exist, create defaults
+    if (!subjects || subjects.length === 0) {
+      subjects = subjectname.map(sub => ({
+        subject: sub,
+        forClass: studentClass,
+        theory: 75,
+        practical: 25,
+        total: 100,
+        passingMarks: 35
+      }));
+    }
+    
+    // Create a map of subject configurations
+    const subjectConfigs = {};
+    subjects.forEach(sub => {
+      const subName = sub.subject || sub.newsubject;
+      if (subName) {
+        // Use more explicit checks for numeric values to handle 0 correctly
+        const theory = sub.theory !== undefined && sub.theory !== null ? parseInt(sub.theory) : 75;
+        const practical = sub.practical !== undefined && sub.practical !== null ? parseInt(sub.practical) : 25;
+        const total = sub.total !== undefined && sub.total !== null ? parseInt(sub.total) : 100;
+        const passingMarks = sub.passingMarks !== undefined && sub.passingMarks !== null ? parseInt(sub.passingMarks) : 35;
+        
+        subjectConfigs[subName] = {
+          theory: theory,
+          practical: practical,
+          total: total,
+          passingMarks: passingMarks
+        };
+      }
+    });
+
+    res.render("admin/marksheet", {
+      editing: false,
+      currentPage: 'marksheet',
+      subjectname,
+      students,
+      terminal: terminal,
+      academicYear: nepaliYear,
+      studentClass: studentClass,
+      section: section,
+      subjectConfigs: subjectConfigs || {},
+      cross,
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in marksheet controller:", err);
+    res.status(500).send("Error loading marksheet page: " + err.message);
+  }
+};
+exports.marksheetprint = async (req, res, next) => {
+  try {
+
+     const {studentClass,section,terminal,academicYear} = req.query;
+    const year = new Date();
+    const nepaliYear = academicYear || bs.ADToBS(`${year}`).slice(0, 4);
+    // Get sidenav data
+    const sidenavData = await getSidenavData(req);
+   
+    
+   const cross = []
+    
+    // Get subjects with their configurations for this class
+    let subjects = await newsubject.find({forClass: studentClass}, { _id: 0, subject: 1, newsubject: 1, forClass: 1, theory: 1, practical: 1, total: 1, passingMarks: 1 });
+    console.log("Found subject configs:", subjects);
+    
+    // If no subject configuration exists in newsubject collection, use defaults
+    if (!subjects || subjects.length === 0) {
+      console.log("No subject configurations found, using defaults");
+      // Use old subject list if available
+      const oldSubjects = await subject.find({forClass: studentClass});
+      console.log("Using old subject list:", oldSubjects);
+      
+      const defaultSubjects = oldSubjects.length > 0 
+                            ? oldSubjects.map(s => s.subject) 
+                            : ["Nepali", "English", "Mathematics", "Science", "Social Studies"];
+      
+      // Create default configurations
+      subjects = defaultSubjects.map(subName => ({
+        subject: subName,
+        newsubject: subName, // Include both field names for consistency
+        forClass: studentClass,
+        theory: 75,
+        practical: 25,
+        total: 100,
+        passingMarks: 35
+      }));
+    }
+    
+    // Create a map of subject configurations
+    const subjectConfigs = {};
+    subjects.forEach(sub => {
+      // Handle both possible field names
+      const subName = sub.subject || sub.newsubject;
+      if (subName) {
+        // Use more explicit checks for numeric values to handle 0 correctly
+        const theory = sub.theory !== undefined && sub.theory !== null ? parseInt(sub.theory) : 75;
+        const practical = sub.practical !== undefined && sub.practical !== null ? parseInt(sub.practical) : 25;
+        const total = sub.total !== undefined && sub.total !== null ? parseInt(sub.total) : 100;
+        const passingMarks = sub.passingMarks !== undefined && sub.passingMarks !== null ? parseInt(sub.passingMarks) : 35;
+        
+        subjectConfigs[subName] = {
+          theory: theory,
+          practical: practical,
+          total: total,
+          passingMarks: passingMarks
+        };
+        console.log(`Subject config for ${subName}:`, subjectConfigs[subName]);
+      }
+    });
+    
+    const subjectlist = subjects.map(sub => sub.subject || sub.newsubject);
+   
+    for (const sub of subjectlist) {
+      const model = getSubjectModelPractical(sub, studentClass, section, terminal,"thpr",nepaliYear);
+      const ledgerData = await model.find({}, { _id: 0,totalmarks:1,theory:1,practical:1,name:1,roll:1 }).lean();
+      cross.push({
+      
+        subject: sub,
+        ledgerData: ledgerData
+    });
+  }
+  
+let students = {};
+  const subjectname = cross.map(c=>c.subject);
+cross.forEach(({ subject, ledgerData }) => {
+  ledgerData.forEach(student => {
+    // Initialize student if not exists
+    if (!students[student.name]) {
+      students[student.name] = {
+        roll: student.roll || null
+      };
+    }
+
+
+    // Initialize subject object if not exists
+    if (!students[student.name][subject]) {
+      students[student.name][subject] = {
+        theory: null,
+        practical: null,
+        total: null
+        
+      };
+    }
+
+    // Add theory & practical marks
+    students[student.name][subject].theory = student.theory || null;
+    students[student.name][subject].practical = student.practical || null;
+    students[student.name][subject].total =
+      (student.theory || null) + (student.practical || null);
+  });
+ 
+});
+
+console.log("Students data:", students);
+
+
+    //from subject list collection subject where class
+
+
+   
+    // Make sure we always pass subjectConfigs to the template
+    console.log("Subject configs for rendering:", Object.keys(subjectConfigs));
+    
+    res.render("admin/marksheetprint", {
+      editing: false,
+      currentPage: 'marksheetprint',
+      subjectname,
+      students,
+      terminal: terminal,
+      academicYear: nepaliYear,
+      studentClass: studentClass,
+      section: section,
+      subjectConfigs: subjectConfigs || {}, // Ensure it's never undefined
+      cross,
+      subjects,
+      
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in marksheet controller:", err);
+    res.status(500).send("Error loading marksheet page: " + err.message);
+  }
+    }
+exports.marksheetSetupForm = async (req, res) => {
+  try {
+    const { studentClass } = req.query;
+    const sidenavData = await getSidenavData(req);
+    
+    // Default values for the form
+    let formData = {
+      schoolName: 'ZENITH SECONDARY SCHOOL',
+      schoolAddress: 'Piple, Hetauda-05, Makwanpur',
+      schoolLogo: '/public/school.jpg',
+      schoolSeal: '',
+      schoolSealPosition: 'center',
+      terminal: 'FIRST',
+      academicYear: new Date().getFullYear() + 56 + '/' + (new Date().getFullYear() + 57),
+      classTeacher: '',
+      principalName: ''
+    };
+    
+    // If a class is specified, get subject configurations
+    if (studentClass) {
+      const subjects = await newsubject.find({forClass: studentClass});
+      
+      if (subjects && subjects.length > 0) {
+        formData.subjects = subjects.map(s => s.subject).join(',');
+        
+        // Use the first subject as a reference for default marks
+        formData.fullTheory = subjects[0].theory || 75;
+        formData.fullPractical = subjects[0].practical || 25;
+        formData.fullMarks = subjects[0].total || 100;
+        formData.passingMarks = subjects[0].passingMarks || 35;
+      }
+    }
+    
+    res.render('admin/marksheetsetup', {
+      ...formData,
+      studentClass,
+      currentPage: 'marksheetsetup',
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in marksheet setup form:", err);
+    res.status(500).send("Error loading marksheet setup: " + err.message);
+  }
+};
+
+exports.marksheetSetupSave = async (req, res) => {
+  try {
+    const {
+      schoolName, schoolAddress, schoolLogo, schoolSeal, schoolSealPosition,
+      subjects, fullTheory, fullPractical, fullMarks, passingMarks,
+      terminal, academicYear, classTeacher, principalName, studentClass
+    } = req.body;
+    
+    // Save school settings to a configuration model or file
+    // For now, we'll just focus on saving subject configurations
+    
+    if (subjects && studentClass) {
+      // Parse subjects string to array
+      const subjectArray = subjects.split(',').map(s => s.trim());
+      
+      // Delete existing subject configs for this class
+      await newsubject.deleteMany({forClass: studentClass});
+      
+      // Create new subject configurations
+      for (const subjectName of subjectArray) {
+        await newsubject.create({
+          subject: subjectName,
+          forClass: studentClass,
+          theory: fullTheory,
+          practical: fullPractical,
+          total: fullMarks,
+          passingMarks: passingMarks
+        });
+      }
+      
+      res.redirect(`/admin/marksheetsetup?studentClass=${studentClass}`);
+    } else {
+      res.status(400).send("Missing required fields: subjects and class");
+    }
+  } catch (err) {
+    console.error("Error in marksheet setup save:", err);
+    res.status(500).send("Error saving marksheet setup: " + err.message);
+  }
+};
+
+exports.practicalMarks = async (req, res, next) => {
+  try {
+    let { subjectinput, studentClass, section, terminal, academicyear } = req.query;
+
+    // ✅ Get sidenav data for dropdowns (always needed)
+    const sidenavData = await getSidenavData(req);
+
+
+    // ✅ Case 1: No query yet → just render empty page with selection
+    if (!subjectinput || !studentClass || !section || !terminal) {
+      return res.render("admin/practicalentry", {
+        editing: false,
+        currentPage: "practicalMarks",
+        studentThData: [],   // no table yet
+        subjectinput: null,
+        studentClass: null,
+        section: null,
+        terminal: null,
+        academicyear: null,
+        studentPrData: [],
+        ...sidenavData
+      });
+    }
+
+    // ✅ Case 2: Query exists → proceed
+    const year = new Date();
+    const nepaliYear = academicyear || bs.ADToBS(`${year}`).slice(0, 4);
+    console.log("Practical Marks Request:", { subjectinput, studentClass, section, terminal, academicyear: nepaliYear });
+
+    // First, check if theory marks collection exists (without creating it)
+    console.log(`Checking if collection exists: ${subjectinput}_${studentClass}_${section}_${terminal}`);
+    
+    // Safely check if collection exists before creating a model
+    let theoryModel = null;
+    
+    // Check if the model is already registered in mongoose
+    if (mongoose.models[`${subjectinput}_${studentClass}_${section}_${terminal}`]) {
+      theoryModel = mongoose.models[`${subjectinput}_${studentClass}_${section}_${terminal}`];
+      console.log(`Using existing mongoose model for ${subjectinput}_${studentClass}_${section}_${terminal}`);
+    } else {
+      // Check if the collection exists in the database
+      try {
+        // Get list of all collections
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const collectionExists = collections.some(
+          col => col.name === `${subjectinput}_${studentClass}_${section}_${terminal}`
+        );
+        
+        if (collectionExists) {
+          // Collection exists, safe to create model
+          theoryModel = mongoose.model(
+            `${subjectinput}_${studentClass}_${section}_${terminal}`, 
+            studentSchema, 
+            `${subjectinput}_${studentClass}_${section}_${terminal}`
+          );
+          console.log(`Collection exists, created model for ${subjectinput}_${studentClass}_${section}_${terminal}`);
+        } else {
+          console.log(`⚠️ Collection ${subjectinput}_${studentClass}_${section}_${terminal} doesn't exist in database`);
+          // Do NOT create a model for non-existent collections
+        }
+      } catch (error) {
+        console.error(`Error checking if collection exists:`, error);
+      }
+    }
+    
+    console.log(`Theory model retrieved:`, theoryModel ? 'Yes' : 'No');
+
+    // ✅ If theory collection/model does NOT exist
+    if (!theoryModel) {
+      return res.render("admin/practicalentry", {
+        editing: false,
+        currentPage: "practicalMarks",
+        studentThData: [],
+        subjectinput,
+        studentClass,
+        section,
+        terminal,
+        academicyear: nepaliYear,
+        studentPrData: [],
+        message: `No theory collection found for ${subjectinput} ${studentClass}-${section} ${terminal}`,
+        ...sidenavData
+      });
+    }
+
+    // ✅ Fetch theory marks only if the model exists
+    let studentThData = [];
+    
+    if (theoryModel) {
+      console.log(`Collection name: ${theoryModel.collection.name}`);
+      console.log(`Attempting to fetch theory marks from collection: ${theoryModel.collection.name}`);
+      try {
+        studentThData = await theoryModel.find(
+          {},
+          { _id: 0, totalMarks: 1, name: 1, roll: 1, studentClass: 1, section: 1, terminal: 1 }
+        ).lean();
+        
+        console.log(`Found ${studentThData.length} students in theory data`);
+        if (studentThData.length > 0) {
+          console.log(`Sample student:`, studentThData[0]);
+        }
+      } catch (error) {
+        console.error(`Error fetching theory marks:`, error);
+        // Don't throw error, handle gracefully
+        studentThData = [];
+      }
+    } else {
+      console.log(`⚠️ No theory model available for ${subjectinput}_${studentClass}_${section}_${terminal}`);
+    }
+
+    // We already check for empty studentThData above, no need for another check here
+
+    // Only proceed with practical data if we have valid theory data
+    if (studentThData.length === 0) {
+      return res.render("admin/practicalentry", {
+        editing: false,
+        currentPage: "practicalMarks",
+        studentThData: [],
+        subjectinput,
+        studentClass,
+        section,
+        terminal,
+        academicyear: nepaliYear,
+        studentPrData: [],
+        message: `No theory marks found for ${subjectinput} in Class ${studentClass}, Section ${terminal}. Please enter theory marks first.`,
+        ...sidenavData
+      });
+    }
+    
+    // ✅ Get the practical marks model (create if it doesn't exist)
+    const prmodel = getSubjectModelPractical(subjectinput, studentClass, section, terminal, "thpr", nepaliYear);
+
+    // ✅ First fetch existing practical data
+    const existingPracticalData = await prmodel.find({}, { roll: 1 }).lean();
+    const existingRolls = new Set(existingPracticalData.map(record => record.roll));
+    
+    console.log(`Found ${existingPracticalData.length} existing practical records`);
+    
+    // ✅ Filter theory data to only include students without practical records
+    const newStudentsData = studentThData.filter(data => !existingRolls.has(data.roll));
+    
+    console.log(`Found ${newStudentsData.length} students that need practical records created`);
+    
+    // ✅ Initialize practical collection only for new students
+    if (newStudentsData.length > 0) {
+      const practicalData = newStudentsData.map(data => ({
+        roll: data.roll,
+        name: data.name,
+        studentClass: data.studentClass || studentClass,
+        section: data.section || section,
+        theory: data.totalMarks || 0,
+        practical: 0,
+        totalmarks: data.totalMarks || 0, // Initial total = theory marks
+        terminal: terminal,
+        academicYear: nepaliYear
+      }));
+
+      // ✅ Insert only new students (no duplicates)
+      try {
+        if (practicalData.length > 0) {
+          console.log(`Initializing practical marks for ${practicalData.length} NEW students`);
+          await prmodel.insertMany(practicalData);
+        }
+      } catch (err) {
+        console.error("Error initializing practical marks:", err);
+        // Even with our filtering, handle any unexpected errors
+      }
+    } else {
+      console.log(`All students already have practical records - no new inserts needed`);
+    }
+
+    // ✅ Fetch practical data (after ensuring it's created)
+    const studentPrData = await prmodel.find({}).lean();
+    
+    // ✅ Create a merged dataset with both theory and practical marks
+    const mergedData = studentThData.map(thStudent => {
+      // Find corresponding practical record
+      const prRecord = studentPrData.find(pr => pr.roll === thStudent.roll);
+      
+      return {
+        roll: thStudent.roll,
+        name: thStudent.name,
+        studentClass: thStudent.studentClass,
+        section: thStudent.section,
+        terminal: thStudent.terminal,
+       
+        // Use practical record if available, otherwise default values
+        theory: thStudent.totalMarks || 0,
+        practical: prRecord?.practical || 0,
+        totalmarks: prRecord?.totalmarks || thStudent.totalMarks || 0
+      };
+    });
+
+    // ✅ Finally render table
+    return res.render("admin/practicalentry", {
+      editing: false,
+      currentPage: "practicalMarks",
+      studentThData: mergedData, // Send merged data
+      subjectinput,
+      studentClass,
+      section,
+      terminal,
+       studentPrData,
+      academicyear: nepaliYear,
+      ...sidenavData
+    });
+
+  } catch (err) {
+    console.error("Error in practicalMarks controller:", err);
+    return res.status(500).send("Error loading practical marks page: " + err.message);
+  }
+};
+
+exports.autoSavePracticalMarks = async (req, res, next) => {
+  try {
+    const { subjectinput, studentClass, section, terminal, roll, theory, practical, academicyear } = req.body;
+    
+    // Validate required fields
+    if (!subjectinput || !studentClass || !section || !terminal || !roll) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Missing required fields: subject, class, section, terminal, or roll number" 
+      });
+    }
+    
+    // Convert to numbers and handle missing values
+    const theoryValue = Number(theory) || 0;
+    const practicalValue = Number(practical) || 0;
+    const totalmarks = theoryValue + practicalValue;
+    
+    // Get current year for academic year if not provided
+    const year = new Date();
+    const nepaliYear = academicyear || bs.ADToBS(`${year}`).slice(0, 4);
+    
+    console.log(`Auto-saving practical marks: Roll: ${roll}, Subject: ${subjectinput}, Theory: ${theoryValue}, Practical: ${practicalValue}, Total: ${totalmarks}`);
+
+    // First check if the theory collection exists
+    const theoryCollectionName = `${subjectinput}_${studentClass}_${section}_${terminal}`;
+    const collections = await mongoose.connection.db.listCollections({ name: theoryCollectionName }).toArray();
+    
+    if (collections.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Theory collection ${theoryCollectionName} doesn't exist. Please enter theory marks first.`
+      });
+    }
+    
+    // Get the correct model dynamically for practical marks
+    const practicalModelName = `${subjectinput}_${studentClass}_${section}_${terminal}_thpr_${nepaliYear}`;
+    const model = getSubjectModelPractical(subjectinput, studentClass, section, terminal, "thpr", nepaliYear);
+    
+    if (!model) {
+      return res.status(404).json({ 
+        success: false, 
+        error: `Unable to get or create model for ${practicalModelName}` 
+      });
+    }
+    
+    // Use findOne first to check if record exists
+    const existingRecord = await model.findOne({ roll });
+    
+    if (existingRecord) {
+      // Update existing record
+      const result = await model.findOneAndUpdate(
+        { roll },
+        { 
+          $set: { 
+            theory: theoryValue,
+            practical: practicalValue,
+            totalmarks,
+            lastUpdated: new Date()
+          }
+        },
+        { new: true }
+      );
+      
+      if (!result) {
+        return res.status(500).json({ 
+          success: false, 
+          error: `Failed to update record for roll ${roll}` 
+        });
+      }
+    } else {
+      // If student not found, check if they exist in theory data
+      const theoryModel = mongoose.models[theoryCollectionName] || 
+                          mongoose.model(theoryCollectionName, studentSchema, theoryCollectionName);
+      
+      const theoryStudent = await theoryModel.findOne({ roll });
+      
+      if (!theoryStudent) {
+        return res.status(404).json({ 
+          success: false, 
+          error: `Student with roll ${roll} not found in theory data` 
+        });
+      }
+      
+      // Student exists in theory but not practical, create new entry
+      try {
+        // To prevent race conditions, use findOneAndUpdate with upsert instead of create
+        const newResult = await model.findOneAndUpdate(
+          { roll },
+          { 
+            $setOnInsert: {
+              name: theoryStudent.name,
+              studentClass,
+              section,
+              terminal,
+              academicYear: nepaliYear,
+            },
+            $set: {
+              theory: theoryValue,
+              practical: practicalValue,
+              totalmarks,
+              lastUpdated: new Date()
+            }
+          },
+          { upsert: true, new: true }
+        );
+        
+        return res.json({ 
+          success: true, 
+          roll, 
+          theory: theoryValue,
+          practical: practicalValue, 
+          totalmarks,
+          message: `New practical marks entry created for Roll: ${roll}` 
+        });
+      } catch (createErr) {
+        return res.status(500).json({ 
+          success: false, 
+          error: `Error creating new practical entry: ${createErr.message}` 
+        });
+      }
+    }
+
+    // Return success with updated values
+    res.json({ 
+      success: true, 
+      roll, 
+      theory: theoryValue,
+      practical: practicalValue, 
+      totalmarks,
+      message: `Marks saved successfully for Roll: ${roll}` 
+    });
+
+  } catch (err) {
+    console.error("Auto-save error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+exports.editTeacher = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const { userId } = req.params;
+    const { editing } = req.query;
+    const classlist = await studentClass.find({}).lean();
+    const userData = await userlist.findOne({ _id: userId }).lean();
+    
+    const users = await userlist.find({}).lean();
+    
+    if (!userData) {
+      return res.status(404).send("User not found");
+    }
+    
+    // Get sidenav data
+    const sidenavData = await getSidenavData(req);
+    
+    res.render("admin/user", {
+      editing,
+      userId,
+      userData,
+      userlist:users,
+      classlist,
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in editTeacher:", err);
+    res.status(500).send("Error loading teacher edit form: " + err.message);
+  }
+};
+
+// Secure password reset controller
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { userId, newPassword } = req.body;
+    if (!userId || !newPassword) {
+      return res.status(400).json({ message: "User ID and new password are required" });
+    }
+    const bcrypt = require("bcrypt");
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const userlist = require("mongoose").model("userlist", require("../model/admin").teacherSchema, "users");
+    const updatedUser = await userlist.findByIdAndUpdate(
+      userId,
+      { password: hashedPassword, $inc: { tokenVersion: 1 } },
+      { new: true }
+    );
+   
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.render("./partials/success",{message: "Password reset successful",redirectUrl:"/user"} )
+  } catch (err) {
+    console.error("Error resetting password:", err);
+    res.status(500).json({ message: "Error resetting password: " + err.message });
   }
 };

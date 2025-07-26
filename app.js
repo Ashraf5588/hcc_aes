@@ -1,14 +1,16 @@
 const express = require('express');
 const student  = require('./routers/mainpage');
 const fs = require('fs');
+const admincontrol = require('./controller/admincontroller')
 
 const app = express();
-
+const {verifytoken} = require('./middleware/auth');
 
 const connection = require('./config/connection')
 // Serve static files from 'uploads' folder
 // app.use('/uploads', express.static(__dirname + '/uploads'));
 const path = require('path')
+ // Apply token verification middleware globally
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, filePath, stat) => {
     const fileName = path.basename(filePath);
@@ -69,6 +71,7 @@ app.use(express.json())
 app.use(cookieParser());
 app.use(express.urlencoded({extended:true}))
 
+// app.use(verifytoken); // Apply token verification middleware globally
 connection();
 
 // Middleware to log PDF requests for debugging

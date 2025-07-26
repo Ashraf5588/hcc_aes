@@ -4,7 +4,7 @@ const controller = require('../controller/controller')
 const multer  = require('multer')
 
 
-
+const {verifytoken,authorized,isAdmin}=require('../middleware/auth')
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -26,67 +26,70 @@ const upload = multer({ storage: storage })
 const {authenticateToken} = require('../middleware/loginmiddleware')
 
 const {authenticateTokenStudent} = require('../middleware/loginmiddleware')
-const admincontrol = require('../controller/admincontroller')
+const admincontrol = require('../controller/admincontroller');
+const { verify } = require('jsonwebtoken');
 
 
+
+
+// Secure password reset route
+student.post('/reset-password', verifytoken, authorized, isAdmin, admincontrol.resetPassword);
 
 student.get('/admin/login',admincontrol.adminlogin)
 student.post('/admin/login',admincontrol.adminloginpost)
-student.get('/teacher/login',admincontrol.teacherlogin)
-student.post('/teacher/logins',admincontrol.teacherloginpost)
-student.get('/',authenticateTokenStudent,controller.homePage)
-student.get('/student/login/home',admincontrol.studentlogin)
-student.post('/student/login/home',admincontrol.studentloginpost)
 
-student.get('/admin/term/:terminal',authenticateToken,admincontrol.admin)
+student.get('/',verifytoken,authorized,controller.homePage)
 
+student.get('/admin/term/:terminal',verifytoken,authorized,isAdmin,admincontrol.admin)
 
-student.get('/admin/subject/:subId?',authenticateTokenStudent,admincontrol.showSubject)
+student.get('/admin/marksheetsetup',verifytoken,authorized,isAdmin,admincontrol.marksheetSetupForm)
+student.post('/admin/marksheetsetup',verifytoken,authorized,isAdmin,admincontrol.marksheetSetupSave)
 
-student.post('/admin/subjectadd/:subId?',authenticateTokenStudent,upload.single('questionPaperOfClass'),admincontrol.addSubject)
-student.get('/admin/get_subject_data',authenticateTokenStudent,admincontrol.subjectData)
+student.get('/admin/subject/:subId?',verifytoken,authorized,admincontrol.showSubject)
 
-student.get('/admin/class/:classId?',authenticateToken,admincontrol.showClass)
-student.post('/admin/class/:classId?',authenticateToken,admincontrol.addClass)
-student.get('/admin/terminal',authenticateToken,admincontrol.addTerminal)
-student.post('/admin/terminal/:terminalId?',authenticateToken,admincontrol.addTerminalpost)
-student.get('/admin/terminal/:terminalId/:editing?',authenticateToken,admincontrol.editTerminal)
-student.get('/delete/terminal/:terminalId',authenticateToken,admincontrol.deleteTerminal)
-student.get('/admin/new/subject',authenticateToken,admincontrol.addNewSubject)
-student.post('/admin/new/subject/:subjectId?',authenticateToken,admincontrol.addNewSubjectPost)
-student.get('/admin/new/subject/:subjectId/:editing?',authenticateToken,admincontrol.editNewSubject)
-student.get('/delete/new/subject/:subjectId',authenticateToken,admincontrol.deleteNewSubject)
+student.post('/admin/subjectadd/:subId?',verifytoken,authorized,upload.single('questionPaperOfClass'),admincontrol.addSubject)
+student.get('/admin/get_subject_data',verifytoken,admincontrol.subjectData)
 
-student.get('/delete/subject/:subjectId/:subjectname?',authenticateToken,admincontrol.deleteSubject)
-student.get('/delete/class/:classId',authenticateToken,admincontrol.deleteStudentClass)
-student.get('/admin/editsub/:subId/:editing?',authenticateTokenStudent,admincontrol.editSub)
-student.get('/admin/editclass/:classId/:editing?',authenticateToken,admincontrol.editClass)
+student.get('/admin/class/:classId?',verifytoken,authorized,isAdmin,admincontrol.showClass)
+student.post('/admin/class/:classId?',verifytoken,authorized,isAdmin,admincontrol.addClass)
+student.get('/admin/terminal',verifytoken,authorized,isAdmin,admincontrol.addTerminal)
+student.post('/admin/terminal/:terminalId?',verifytoken,authorized,isAdmin,admincontrol.addTerminalpost)
+student.get('/admin/terminal/:terminalId/:editing?',verifytoken,authorized,isAdmin,admincontrol.editTerminal)
+student.get('/delete/terminal/:terminalId',verifytoken,authorized,isAdmin,admincontrol.deleteTerminal)
+student.get('/admin/new/subject',verifytoken,authorized,isAdmin,admincontrol.addNewSubject)
+student.post('/admin/new/subject/:subjectId?',verifytoken,authorized,isAdmin,admincontrol.addNewSubjectPost)
+student.get('/admin/new/subject/:subjectId/:editing?',verifytoken,authorized,isAdmin,admincontrol.editNewSubject)
+student.get('/delete/new/subject/:subjectId',verifytoken,authorized,isAdmin,admincontrol.deleteNewSubject)
+
+student.get('/delete/subject/:subjectId/:subjectname?',verifytoken,authorized,admincontrol.deleteSubject)
+student.get('/delete/class/:classId',verifytoken,authorized,isAdmin,admincontrol.deleteStudentClass)
+student.get('/admin/editsub/:subId/:editing?',verifytoken,authorized,admincontrol.editSub)
+student.get('/admin/editclass/:classId/:editing?',verifytoken,authorized,admincontrol.editClass)
 // Route for editing a student
-student.get('/edit-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenStudent, controller.editStudent);
+student.get('/edit-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',verifytoken,authorized, controller.editStudent);
 
 // Route for updating a student
-student.post('/update-student/:studentId/:subjectinput/:studentClass/:section/:terminal', authenticateTokenStudent,controller.updateStudent);
+student.post('/update-student/:studentId/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.updateStudent);
 
 // Route for deleting a student
-student.get('/delete-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',authenticateTokenStudent, controller.deleteStudent);
-student.get('/crossheet',authenticateToken,admincontrol.cross_sheet)
-student.get('/teacher/:controller?',authenticateTokenStudent,controller.teacherPage)
-student.get('/teacher/:subject/:controller',authenticateTokenStudent,controller.studentclass)
+student.get('/delete-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',verifytoken,authorized,controller.deleteStudent);
+student.get('/crossheet',verifytoken,authorized,isAdmin,admincontrol.cross_sheet)
 
-student.get('/findData/:subjectinput/:studentClass/:section/:terminal',authenticateTokenStudent,controller.findData)
-student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:status',authenticateTokenStudent,controller.termwisestatus)
-student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status',authenticateTokenStudent,controller.termwisedata)
-student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status/:qno/:terminal',authenticateTokenStudent,controller.termdetail)
 
-student.get('/student_data/:subjectinput/:studentClass/:section/:terminal', authenticateTokenStudent, controller.studentrecord)
-student.post('/search/:subject/:studentClass/:section/:terminal',authenticateTokenStudent,controller.search)
-student.get('/:controller/:subject',authenticateTokenStudent,controller.studentclass)
-student.get('/:controller/:subject/:studentClass/:section',authenticateTokenStudent,controller.terminal)
-student.get('/forms/:subjectinput/:studentClass/:section/:terminal?',authenticateTokenStudent,controller.showForm)
-student.post('/forms/:subjectinput/:studentClass?/:section?/:terminal?',authenticateTokenStudent,controller.saveForm)
+student.get('/findData/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.findData)
+student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:status',verifytoken,authorized,controller.termwisestatus)
+student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status',verifytoken,authorized,controller.termwisedata)
+student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:termwisereport/:status/:qno/:terminal',verifytoken,authorized,controller.termdetail)
+
+student.get('/student_data/:subjectinput/:studentClass/:section/:terminal', verifytoken,authorized,controller.studentrecord)
+student.post('/search/:subject/:studentClass/:section/:terminal',verifytoken,authorized,controller.search)
+student.get('/:controller/:subject',verifytoken,authorized,controller.studentclass)
+student.get('/:controller/:subject/:studentClass/:section',verifytoken,authorized,controller.terminal)
+student.get('/forms/:subjectinput/:studentClass/:section/:terminal?',verifytoken,authorized,controller.showForm)
+student.post('/forms/:subjectinput/:studentClass?/:section?/:terminal?',verifytoken,authorized,controller.saveForm)
 
 // Temporary debug route
-student.get('/debug/:subjectinput/:studentClass/:section/:terminal', (req, res) => {
+student.get('/debug/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized, (req, res) => {
   const { subjectinput, studentClass, section, terminal } = req.params;
   
   // Get subject data similar to the showForm controller
@@ -111,12 +114,12 @@ student.get('/debug/:subjectinput/:studentClass/:section/:terminal', (req, res) 
     });
 });
 
-student.get('/studentData/:subjectinput/:studentClass/:section/:qno/:status/:terminal',authenticateTokenStudent,controller.studentData)
-student.get('/totalStudent/:subjectinput/:studentClass/:section/:terminal',authenticateTokenStudent,controller.totalStudent)
-student.get('/checkroll/:subjectinput/:studentClass/:section/:terminal',authenticateTokenStudent,controller.checkroll)
+student.get('/studentData/:subjectinput/:studentClass/:section/:qno/:status/:terminal',verifytoken,authorized,controller.studentData)
+student.get('/totalStudent/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.totalStudent)
+student.get('/checkroll/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.checkroll)
 
 // Debug route to check available subjects
-student.get('/debug/subjects', async (req, res) => {
+student.get('/debug/subjects', verifytoken,authorized,async (req, res) => {
   try {
     const mongoose = require('mongoose');
     const { subjectSchema } = require('../model/adminschema');
@@ -145,15 +148,21 @@ student.get('/debug/subjects', async (req, res) => {
     });
   }
 });
-student.get('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecord)
-student.post('/studentrecord',upload.single('studentRecords'),authenticateToken,admincontrol.studentrecordpost)
-student.get('/user',authenticateToken,admincontrol.showuser)
-student.post('/user',authenticateToken,admincontrol.saveuser)
+student.get('/studentrecord',verifytoken,authorized,isAdmin,upload.single('studentRecords'),admincontrol.studentrecord)
+student.post('/studentrecord',verifytoken,authorized,isAdmin,upload.single('studentRecords'),admincontrol.studentrecordpost)
+student.get('/user',verifytoken,authorized,isAdmin,admincontrol.showuser)
+student.post('/user/:userId?',verifytoken,authorized,isAdmin,admincontrol.saveuser)
 // Route to view/display uploaded files in browser
-student.get('/view-file/:filename', authenticateTokenStudent, admincontrol.viewFile)
+student.get('/view-file/:filename',verifytoken,authorized, admincontrol.viewFile)
+student.get('/marksheet',verifytoken,authorized,isAdmin, admincontrol.marksheet);
+student.get('/marksheetprint',verifytoken,authorized,isAdmin, admincontrol.marksheetprint);
+student.get('/copytheory',verifytoken,authorized,isAdmin, admincontrol.copytheory);
+student.get('/user/delete-teacher/:teacherId', verifytoken, authorized, isAdmin, admincontrol.deleteTeacher);
 
+student.get('/practical',verifytoken,authorized, admincontrol.practicalMarks);
+student.post('/practicalMarks/autoSave',verifytoken,authorized, admincontrol.autoSavePracticalMarks);
 // Enhanced file viewer routes for better VM compatibility
-student.get('/file-viewer/:filename', authenticateTokenStudent, (req, res) => {
+student.get('/file-viewer/:filename', (req, res) => {
   const filename = req.params.filename;
   const path = require('path');
   const fs = require('fs');
@@ -168,7 +177,7 @@ student.get('/file-viewer/:filename', authenticateTokenStudent, (req, res) => {
   res.render('file-viewer', { filename: filename });
 });
 
-student.get('/view-pdf/:filename', authenticateToken, (req, res) => {
+student.get('/view-pdf/:filename', (req, res) => {
   const filename = req.params.filename;
   const path = require('path');
   const fs = require('fs');
@@ -193,6 +202,8 @@ student.get('/view-pdf/:filename', authenticateToken, (req, res) => {
 });
 
 // Diagnostic route for VM deployment issues
-student.get('/admin/diagnostics', authenticateToken, admincontrol.diagnostics)
+student.get('/admin/diagnostics', admincontrol.diagnostics)
+student.get('/user/edit-teacher/:userId/:editing?', verifytoken, authorized, isAdmin, admincontrol.editTeacher);
+
 
 module.exports = student;

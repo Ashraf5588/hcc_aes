@@ -481,9 +481,69 @@
               value="<%= editing ? newsubjectData.newsubject : '' %>" 
               placeholder="Enter subject name (e.g., Mathematics, Science, History)"
               required
-            >
+            >For Class:
+            <input type="text" placeholder="For Class" name="forClass" value="<%=editing?newsubjectData.forClass:''%>"  required id="forClass">
+            <select name="sameas" id="sameas">
+              <option value="" disabled selected>--Select Class--</option>
+               <% uniqueClass = new Set(studentClassdata.map(item => item.studentClass)); %>
+              <% uniqueClass.forEach(function(classData) { %>
+
+                <option value="<%= classData %>" <%= editing && newsubjectData.forClass === classData ? 'selected' : '' %> >
+                  <%= classData %>
+                </option>
+              <% }) %>
+
+            </select>
+            
+            Theory:
+            <input type="Number" placeholder="Theory Marks" name="theory" value="<%=editing?newsubjectData.theory:''%>" required id="theory">
+Practical:
+            <input type="Number" placeholder="Practical Marks" name="practical" value="<%=editing?newsubjectData.practical:''%>" required id="practical">Total:
+            <input type="Number" placeholder="Total Marks" name="total" value="<%=editing?newsubjectData.total:''%>" required id="total">Minimum Pass Marks:
+            <input type="Number" placeholder="Passing Marks" name="passingMarks" value="<%=editing?newsubjectData.passingMarks:''%>" required id="passingMarks">
+
           </div>
-          
+          <script>
+document.getElementById("subject").addEventListener("input", function() {
+              this.value = this.value.toUpperCase();
+              if (subject) {
+                console.log(`Subject entered: ${subject}`);
+              } else {
+                console.log("Subject field is empty.");
+              }
+            });
+
+            document.querySelector("form").addEventListener("input", function() {
+              const forClass = document.getElementById("forClass").value;
+              const theory = parseFloat(document.querySelector("#theory").value);
+              const practical = parseFloat(document.querySelector("#practical").value);
+              const total = theory + practical;
+              document.querySelector("#total").value = total;
+              console.log(`For Class: ${forClass}, Theory: ${theory}, Practical: ${practical}, Total: ${total}`);
+            });
+          </script>
+
+
+<script>
+  document.querySelector("#sameas").addEventListener("change",async function() {
+    const selectedClass = this.value;
+    const subject = document.querySelector("#subject").value
+    console.log(`Selected Class: ${selectedClass}, Subject: ${subject}`);
+    if(selectedClass && subject) {
+      const response = await fetch(`/copytheory?studentClass=${selectedClass}&subject=${subject}`, )
+      const data = await response.json();
+      if(data) {
+        document.querySelector("#theory").value = data.theory;
+        document.querySelector("#practical").value = data.practical;
+        document.querySelector("#total").value = data.total;
+        document.querySelector("#passingMarks").value = data.passingMarks;
+      } 
+    } else {
+      alert("Please select a class and enter a subject name.");
+      return;
+    }
+  });
+</script>
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-<%= editing ? 'save' : 'plus' %>"></i>
             <%= editing ? 'Update Subject' : 'Add Subject' %>
@@ -517,6 +577,12 @@
                 <tr>
                   <th>S.No.</th>
                   <th>Subject Name</th>
+                  <th>For Class</th>
+                  <th>Theory Marks</th>
+                  <th>Practical Marks</th>
+                  
+                  <th>Total Marks</th>
+                  <th>Passing Marks</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -526,6 +592,21 @@
                     <td><strong><%= index + 1 %></strong></td>
                     <td>
                       <%= subject.newsubject %>
+                    </td>
+                    <td>
+                      <%= subject.forClass %>
+                    </td>
+                    <td>
+                      <%= subject.theory %>
+                    </td>
+                    <td>
+                      <%= subject.practical %>
+                    </td>
+                    <td>
+                      <%= subject.total %>
+                    </td>
+                    <td>
+                      <%= subject.passingMarks %>
                     </td>
                     <td>
                       <a href="/admin/new/subject/<%= subject._id %>/edit?editing=true" 
@@ -559,7 +640,7 @@
 
       <!-- Back to Admin Panel -->
       <div class="back-section">
-        <a href="/admin/term/first" class="btn btn-secondary">
+        <a href="/admin/term/FIRST" class="btn btn-secondary">
           <i class="fas fa-arrow-left"></i>
           Back to Admin Panel
         </a>
