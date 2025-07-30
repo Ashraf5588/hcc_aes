@@ -15,6 +15,8 @@ const student = require("../routers/mainpage");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const userlist = mongoose.model("userlist", teacherSchema, "users");
+ const { studentrecordschema } = require("../model/adminschema");
+const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
 const bcrypt = require("bcrypt");
 const {allowedSubjectData} = require("./controller");
 const {generateToken} = require("../middleware/auth");
@@ -32,7 +34,7 @@ const fs = require('fs')
 const getSidenavData = async (req) => {
   try {
     const subjects = await newsubject.find({}).lean();
-    console.log(subjects)
+  
     const studentClassdata = await studentClass.find({}).lean();
     const terminals = await terminal.find({}).lean();
     
@@ -306,7 +308,7 @@ subjectMappings.forEach(sub => {
 
 
 
-    console.log(`🗺️ Subject mappings:`, allowedSubjectsMap);
+    
 
     // Optimized batch processing for entry counts
     const db = mongoose.connection.db;
@@ -388,8 +390,7 @@ subjectMappings.forEach(sub => {
       entryArray.push(...batchResults);
     }
 
-    console.log(`\n📋 Total entries processed: ${entryArray.length}`);
-    console.log(`📊 Entry array sample:`, entryArray.slice(0, 3));
+  
 
     // Transform entryArray into pivoted format with fixed variable names
     let pivotedData;
@@ -404,8 +405,7 @@ subjectMappings.forEach(sub => {
         const uniqueSubjects = [...new Set(entryArray.map(e => e.subject))].sort();
         const uniqueHeaders = [...new Set(entryArray.map(e => `${e.studentClass}-${e.section}`))].sort();
         
-        console.log(`📚 Unique subjects: ${uniqueSubjects.length}`, uniqueSubjects);
-        console.log(`🏫 Unique headers: ${uniqueHeaders.length}`, uniqueHeaders);
+   
         
         // Create pivot table
         const pivotTable = {};
@@ -430,7 +430,7 @@ subjectMappings.forEach(sub => {
           pivotTable: pivotTable 
         };
         
-        console.log("✅ Manual pivot table created");
+        
       }
     } catch (error) {
       console.error("❌ Error transforming data:", error);
@@ -471,8 +471,16 @@ subjectMappings.forEach(sub => {
 
 exports.showSubject = async (req, res, next) => {
 
-  const subjectsformat = await subject.find({}).lean();
-  console.log("Subjects fetched:", subjectsformat);
+  // Fetch subjects with question paper information
+  const subjectsformat = await subject.find({}, {
+
+ 
+    
+  }).lean();
+  
+  // Add file URL and status to each subject
+
+  
 
   const studentClassdata = await studentClass.find({});
     const className = req.query.className;
@@ -510,8 +518,6 @@ accessibleClasses = studentClassdata.filter(classItem =>
       allowed.section === classItem.section
     )
   );
-  
-
 }
   res.render("admin/subjectlist", {
     subjectsformat: accessibleSubjects,
@@ -779,6 +785,7 @@ exports.addSubject = async (req, res, next) => {  try {
 
 exports.showClass = async (req, res, next) => {
   const studentClasslist = await studentClass.find({});
+
   
   // Get sidenav data
   const sidenavData = await getSidenavData(req);
@@ -834,6 +841,9 @@ exports.addClass = async (req, res, next) => {
   const { classId } = req.params;
   const updateClass = req.body.studentClass;
   const updateSection = req.body.section;
+
+
+
   console.log(updateClass)
   
   if (classId && !undefined) {
@@ -1051,7 +1061,7 @@ exports.editSub = async (req, res, next) => {
   try {
     const { subId } = req.params;
     const editing = req.query.editing === "true";
-    const subjects = await subject.find({}).lean();
+    const subjectsformat = await subject.find({}).lean();
     const subjectedit = await subject.findOne({ _id: `${subId}` });
      const studentClassdata = await studentClass.find({});
     const newsubjectList = await newsubject.find({}).lean();
@@ -1063,18 +1073,42 @@ exports.editSub = async (req, res, next) => {
       const className = req.query.className;
     // Get student class data for form dropdown
     const sidenavData = await getSidenavData(req);
-    const newaccessibleSubjects = newsubjectList.filter(subj =>
-  req.user.allowedSubjects.some(allowed =>
-    allowed.subject === subj.newsubject  
+    const user = req.user;
+if(user.role === 'ADMIN')
+{
+  accessibleSubjects = subjectsformat;
+  newaccessibleSubjects = newsubjectList;
+  accessibleClasses = studentClassdata;
+}
+else
+{
+  accessibleSubjects = subjectsformat.filter(subj =>
+    user.allowedSubjects.some(allowed =>
+      allowed.subject === subj.subject && allowed.studentClass === subj.forClass
+    )
+  );
+
+ newaccessibleSubjects = newsubjectList.filter(subj =>
+  user.allowedSubjects.some(allowed =>
+    allowed.subject === subj.newsubject
   )
 );
+
+accessibleClasses = studentClassdata.filter(classItem =>
+    user.allowedSubjects && user.allowedSubjects.some(allowed =>
+      allowed.studentClass === classItem.studentClass && 
+      allowed.section === classItem.section
+    )
+  );
+}
     
     res.render("admin/subjectlist", {
+  
       editing,
       subId,
       subjectedit,
-      
-      studentClassdata,
+      subjectsformat: accessibleSubjects,
+      studentClassdata: accessibleClasses,
       className,
       newsubjectList: newaccessibleSubjects,
       ...sidenavData
@@ -1180,8 +1214,7 @@ exports.cross_sheet = async (req, res, next) => {
 };
 exports.studentrecord = async (req, res, next) => {
   try {
-      const { studentrecordschema } = require("../model/adminschema");
-    const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
+     
     const studentRecord = await modal.find({}).lean();
     const year = new Date();
     const nepaliYear = bs.ADToBS(`${year}`).slice(0, 4);
@@ -1226,24 +1259,21 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
   await modal.deleteMany({});
 
   await modal.insertMany(jsonArray);
-     const { regNo, column, newValue } = req.body;
-
-    // Update student record based on regNo and column
-    const updated = updateStudentRecord(regNo, column, newValue);  // Your update function here
-    
-    if (updated) {
-        res.json({ success: true });
-    } else {
-        res.json({ success: false, message: 'Update failed' });
-    }
+ 
   // Delete the uploaded file after processing
   fs.unlinkSync(csvFilePath);
- console.log("File uploaded:", req.file);
+  const classListFromCsv = await modal.find({}, { studentClass: 1 ,section:1}).lean();
+
+
+
+
+
   if (!req.file) {
     return res.status(400).send("No file uploaded");
   } 
   else
   {
+
     res.redirect("/studentrecord");
   }
 }catch(err)
@@ -1252,6 +1282,82 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
   res.status(500).send("Error processing student records: " + err.message);
 }
 }
+exports.studentrecordadd = async (req, res, next) => {
+  try {
+      const { studentrecordschema } = require("../model/adminschema");
+const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
+    const { reg,roll, name,studentClass,section} = req.body;
+
+    // Update student record based on regNo and column
+    const updated = await modal.create({ reg,roll, name,studentClass,section });  // Your update function here
+
+    if (updated) {
+        return res.render("./partials/success", {
+            message: 'Student record updated successfully',
+            redirectUrl: '/studentrecord'
+        });
+    } else {
+        res.json({ success: false, message: 'Update failed' });
+    }
+
+
+
+
+  }catch (err) {
+    console.error("Error in studentrecordadd:", err);
+    res.status(500).send("Error adding student record: " + err.message);
+  }
+};
+exports.studentrecordedit = async (req, res, next) => {
+  try {
+    const { studentrecordschema } = require("../model/adminschema");
+    const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
+    const studentRecord = await modal.find({}).lean();
+    const { studentId } = req.params;
+    const editing = req.query.editing === "true"; // Check if editing mode is enabled
+    const studentrecordData = await modal.findOne({ _id: studentId }).lean();
+    console.log("Editing student record:", studentrecordData);
+
+    if (!studentrecordData) {
+      return res.status(404).send("Student record not found");
+    }    
+    return res.render("admin/schoolstudentrecord", {
+      editing:true,
+      studentrecordData,
+      studentId,
+      studentRecord,
+      nepaliYear: bs.ADToBS(new Date()).slice(0, 4), // Convert current date to Nepali year
+      currentPage: 'studentRecord',
+      ...await getSidenavData(req)
+    });
+  }
+  catch (err) {
+    console.error("Error in studentrecordedit:", err);
+    res.status(500).send("Error editing student record: " + err.message);
+  }
+};
+exports.studentrecorddelete = async (req, res, next) => {
+  try {
+    const { studentrecordschema } = require("../model/adminschema");
+    const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
+    const { studentId } = req.params;
+    if (!studentId) {
+      return res.status(400).send("Student ID is required for deletion");
+    }
+    // Find the student record to delete
+    const studentToDelete = await modal.findById(studentId);
+    if (!studentToDelete) {
+      return res.status(404).send("Student record not found");
+    }
+    // Delete the student record
+    await modal.findByIdAndDelete(studentId);
+    console.log(`Student record ${studentToDelete.name} deleted successfully`);
+    res.redirect("/studentrecord");
+  } catch (err) {
+    console.error("Error deleting student record:", err);
+    res.status(500).send("Error deleting student record: " + err.message);
+  }
+};
 exports.showuser = async (req, res, next) => {
   try {
 
@@ -2338,3 +2444,227 @@ exports.resetPassword = async (req, res, next) => {
     res.status(500).json({ message: "Error resetting password: " + err.message });
   }
 };
+exports.subjectlistcheck = async (req, res, next) => {
+  try
+  {
+    const {subjectinput, forClass} = req.query;
+    console.log("Checking subject list for:", { subjectinput, forClass });
+    const exist = await subject.findOne({ subject: subjectinput, forClass: forClass });
+    if (exist) {
+      res.json({exists: true, message: `Subject ${subjectinput} already exists for class ${forClass}.` });
+      return true;
+    }
+    else {
+      res.json({exists: false, message: `Subject ${subjectinput} does not exist for class ${forClass}.` });
+      return false;
+    }
+   
+  }catch(err)
+  {
+    console.error("Error in subjectlistcheck:", err);
+    res.status(500).send("Error checking subject list: " + err.message);
+  }
+}
+exports.report = async (req, res, next) => {
+  try {
+    // Get sidenav data
+    const sidenavData = await getSidenavData(req);
+    
+    res.render("admin/reportprint", {
+      currentPage: 'report',
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in report controller:", err);
+    res.status(500).send("Error loading report page: " + err.message);
+  }
+};
+const getSubjectData = async (subjectinput, forClass, res) => {
+  try {
+    // First try exact match
+    let currentSubject = await subject.find({'subject': `${subjectinput}`, forClass: forClass})
+    
+    // If no results, try case-insensitive search
+    if (!currentSubject || currentSubject.length === 0) {
+      // Try case-insensitive search using a regular expression
+      currentSubject = await subject.find({
+        'subject': { $regex: new RegExp(`^${subjectinput}$`, 'i') }, forClass: forClass
+      });
+    }
+    
+    if (!currentSubject || currentSubject.length === 0) {
+      // Check if any subjects exist at all
+      const allSubjects = await subjectlist.find({}).lean();
+      const subjectsList = allSubjects.map(s => s.subject).join(', ');
+      
+      if (res) {
+        res.status(404).render('404', {
+          errorMessage: `Subject '${subjectinput}' not found in the database. Available subjects: ${subjectsList || 'None'}`,
+          currentPage: 'teacher'
+        });
+      }
+      return null;
+    }
+    return currentSubject[0];
+  } catch (err) {
+    console.error(`Error in getSubjectData: ${err.message}`);
+    if (res) {
+      res.status(500).render('404', {
+        errorMessage: `Server error while looking up subject '${subjectinput}': ${err.message}`,
+        currentPage: 'teacher'
+      });
+    }
+    return null;
+  }
+};
+
+exports.reportprint = async (req, res, next) => {
+  try {
+    const { subjectinput, studentClass, section, terminal, academicYear } = req.query;
+    console.log("Report print request:", { subjectinput, studentClass, section, terminal, academicYear });
+    const year = new Date();
+    const nepaliYear = academicYear || bs.ADToBS(`${year}`).slice(0, 4);
+    const subjects = await newsubject.find({})
+    // Get sidenav data
+    const sidenavData = await getSidenavData(req);
+   const reportofClass = [];
+   const subjectlistfromdb = await subject.find({forClass: studentClass}, { _id: 0, subject: 1, forClass: 1 });
+
+
+
+const subjectlist = Array.from(
+  new Map(
+    subjectlistfromdb.map(item => [`${item.subject}-${item.forClass}`, item])
+  ).values()
+);
+
+console.log(subjectlist);
+
+    for (const individualsubject of subjectlist) {
+       let result = [];
+    // let obtained=[];
+    avg = [];
+    let total=[];
+         const model = getSubjectModel(individualsubject.subject, studentClass, section, terminal);
+
+
+
+    const totalstudent = await model.aggregate([
+      {
+        $match: {
+          $and: [{ section: `${section}` }, { terminal: `${terminal}` }, { studentClass: `${studentClass}` }],
+        },
+      },
+      { $count: "count" },
+    ]);
+    
+    const totalStudent =
+      totalstudent.length > 0 && totalstudent[0].count
+        ? totalstudent[0].count
+        : 0;
+        
+
+
+       
+
+let sub = await model.find({ subject: `${individualsubject.subject}`, studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}` }, { _id: 0, __v: 0 }).lean();
+if (sub && sub.length > 0) {
+ total = Object.keys(sub[0]).slice(7).map(qno=>
+{
+  const t = sub.reduce((sum,obtainedmarks)=>{
+      return sum + (obtainedmarks[qno] ?? 0);
+  },0)
+  return {qno,t};
+}
+
+);
+}
+
+  const subjectData = await getSubjectData(individualsubject.subject, studentClass, res);
+
+
+    const max = parseInt(subjectData.max)
+
+// Build result array for DataTable with question-wise statistics
+for (let i = 1; i <= max; i++) {
+  let n = subjectData[i][0]
+  if(subjectData[i]===0){n=1}
+  for (j = 0; j < n; j++) {
+    const questionKey = `q${i}${String.fromCharCode(97+j)}`;
+    const fullMarks = parseFloat(subjectData[i.toString()][j+1]);
+    
+    // Get the total marks for this question
+    const questionTotal = total.find(t => t.qno === questionKey);
+    const totalMarksForQuestion = questionTotal ? questionTotal.t : 0;
+    
+    // Calculate average percentage
+    const averagePercentage = totalStudent > 0 ? (totalMarksForQuestion / (totalStudent * fullMarks)) * 100 : 0;
+    
+    // Count students in each category
+    const correctCount = await model.countDocuments({
+      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+      [questionKey]: fullMarks
+    });
+    
+    const incorrectCount = await model.countDocuments({
+      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+      [questionKey]: 0
+    });
+    
+    const fiftyCount = await model.countDocuments({
+      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+      [questionKey]: 0.5 * fullMarks
+    });
+    
+    const above50Count = await model.countDocuments({
+      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+      [questionKey]: { $gt: 0.5 * fullMarks, $lt: fullMarks }
+    });
+    
+    const below50Count = await model.countDocuments({
+      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+      [questionKey]: { $lt: 0.5 * fullMarks, $gt: 0 }
+    });
+    
+   
+    
+    result.push({
+      questionNo: questionKey,
+      correct: correctCount,
+      wrong: incorrectCount,
+     
+      correctabove50: above50Count,
+      correctbelow50: below50Count,
+      fifty: fiftyCount,
+      averagePercentage: averagePercentage.toFixed(2),
+      totalMarks: totalMarksForQuestion,
+      fullMarks: fullMarks
+    });
+  }
+}
+reportofClass.push(
+{
+  subject: individualsubject.subject,
+  totalStudents: totalStudent,
+  results: result,
+}
+);
+}
+
+    
+    
+    return res.render("admin/finalreportprint", {
+      currentPage: 'reportprint',
+      reportofClass,
+      studentClass,
+      section,
+      terminal,
+     
+      academicYear: nepaliYear,
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in report print controller:", err);
+    
+  }
+}

@@ -41,6 +41,8 @@ student.post('/admin/login',admincontrol.adminloginpost)
 student.get('/',verifytoken,authorized,controller.homePage)
 
 student.get('/admin/term/:terminal',verifytoken,authorized,isAdmin,admincontrol.admin)
+student.get('/report',verifytoken,authorized,isAdmin,admincontrol.report)
+student.get('/reportprint',verifytoken,authorized,isAdmin,admincontrol.reportprint)
 
 student.get('/admin/marksheetsetup',verifytoken,authorized,isAdmin,admincontrol.marksheetSetupForm)
 student.post('/admin/marksheetsetup',verifytoken,authorized,isAdmin,admincontrol.marksheetSetupSave)
@@ -74,7 +76,7 @@ student.post('/update-student/:studentId/:subjectinput/:studentClass/:section/:t
 // Route for deleting a student
 student.get('/delete-student/:studentId/:subjectinput?/:studentClass?/:section?/:terminal?',verifytoken,authorized,controller.deleteStudent);
 student.get('/crossheet',verifytoken,authorized,isAdmin,admincontrol.cross_sheet)
-
+student.get('/teacher/:subject/:controller',verifytoken,authorized,controller.studentclass)
 
 student.get('/findData/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.findData)
 student.get('/findData/:subjectinput/:studentClass/:section/:termwise/:status',verifytoken,authorized,controller.termwisestatus)
@@ -117,7 +119,7 @@ student.get('/debug/:subjectinput/:studentClass/:section/:terminal',verifytoken,
 student.get('/studentData/:subjectinput/:studentClass/:section/:qno/:status/:terminal',verifytoken,authorized,controller.studentData)
 student.get('/totalStudent/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.totalStudent)
 student.get('/checkroll/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.checkroll)
-
+student.get('/checksubjectexist',verifytoken,authorized,admincontrol.subjectlistcheck)
 // Debug route to check available subjects
 student.get('/debug/subjects', verifytoken,authorized,async (req, res) => {
   try {
@@ -150,6 +152,9 @@ student.get('/debug/subjects', verifytoken,authorized,async (req, res) => {
 });
 student.get('/studentrecord',verifytoken,authorized,isAdmin,upload.single('studentRecords'),admincontrol.studentrecord)
 student.post('/studentrecord',verifytoken,authorized,isAdmin,upload.single('studentRecords'),admincontrol.studentrecordpost)
+student.post('/studentrecord/add',verifytoken,authorized,isAdmin,admincontrol.studentrecordadd)
+student.get('/studentrecord/edit/:studentId/:editing?',verifytoken,authorized,isAdmin,admincontrol.studentrecordedit)
+student.post('/studentrecord/delete/:studentId',verifytoken,authorized,isAdmin,admincontrol.studentrecorddelete)
 student.get('/user',verifytoken,authorized,isAdmin,admincontrol.showuser)
 student.post('/user/:userId?',verifytoken,authorized,isAdmin,admincontrol.saveuser)
 // Route to view/display uploaded files in browser

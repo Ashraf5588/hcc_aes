@@ -1731,7 +1731,7 @@
         
         /* Fix for navigation and last card visibility issues */
         header, nav, .sidenav {
-            z-index: 1001 !important; /* Ensure navigation stays on top */
+            z-index: 100001 !important; /* Ensure navigation stays on top */
             position: relative;
         }
         
@@ -2328,13 +2328,51 @@
   </div>
 </div>
 
-<!-- Fixed question paper section - now outside the two-column layout in a footer position -->
-<div class="question-paper-section d-none d-md-block" id="questionPaperSection" style="z-index: 95;">
-  <!-- Mobile toggle handle -->
-  <div class="paper-toggle-handle"></div>
-  
-  <div class="sticky-paper">
-    <h4 class="mb-2 text-center"><i class="fas fa-file-alt me-2"></i>Question Paper</h4>
+<!-- Floating Question Paper Button (Desktop Only) -->
+<div class="pdf-button-container d-none d-md-block" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+  <button id="openQuestionPaperBtn" class="btn btn-primary rounded-circle" style="
+    width: 60px; 
+    height: 60px; 
+    box-shadow: 0 2px 15px rgba(13, 110, 253, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    animation: glowing 1.5s infinite alternate;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  " onclick="window.open('/uploads/<%= file %>', '_blank')">
+    <i class="fas fa-file-alt" style="font-size: 1.5rem;"></i>
+  </button>
+  <div style="text-align: center; margin-top: 5px; font-size: 0.8rem; color: #666;">
+    Open Question Paper
+  </div>
+</div>
+
+<style>
+@keyframes glowing {
+  from {
+    box-shadow: 0 0 5px #0d6efd,
+                0 0 10px #0d6efd,
+                0 0 15px #0d6efd;
+  }
+  to {
+    box-shadow: 0 0 10px #0d6efd,
+                0 0 20px #0d6efd,
+                0 0 30px #0d6efd;
+  }
+}
+</style>
+
+<!-- Question Paper Modal -->
+<div class="modal fade" id="questionPaperModal" tabindex="-1" aria-labelledby="questionPaperModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="questionPaperModalLabel"><i class="fas fa-file-alt me-2"></i>Question Paper</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="pdf-container" style="height: 80vh;">
     
     <% if (fileStatus === 'missing') { %>
       <div class="alert alert-warning mb-2">
@@ -3253,6 +3291,29 @@
     </script>
 
     <script>
+    // Initialize the question paper modal functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const openQuestionPaperBtn = document.getElementById('openQuestionPaperBtn');
+      const questionPaperModal = document.getElementById('questionPaperModal');
+      const pdfContainer = questionPaperModal.querySelector('.pdf-container');
+      
+      if (openQuestionPaperBtn && questionPaperModal) {
+        const modal = new bootstrap.Modal(questionPaperModal);
+        
+        openQuestionPaperBtn.addEventListener('click', function() {
+          // Load PDF content if not already loaded
+          if (!pdfContainer.innerHTML.trim() && '<%= fileStatus %>' !== 'missing' && '<%= fileStatus %>' !== 'default') {
+            pdfContainer.innerHTML = `
+              <object data="/uploads/<%= file %>" type="application/pdf" width="100%" height="100%" style="border: none;">
+                <p>Unable to display PDF. <a href="/uploads/<%= file %>" target="_blank">Download</a> instead.</p>
+              </object>
+            `;
+          }
+          modal.show();
+        });
+      }
+    });
+
     // Function to check if browser supports PDF embedding
     function supportsPdfEmbedding() {
       // Test for PDF embedding support

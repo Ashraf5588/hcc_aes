@@ -41,7 +41,7 @@
       height: 100vh;
       background: linear-gradient(180deg, var(--dark) 0%, #334155 100%);
       transition: all 0.3s ease;
-      z-index: 1000;
+      z-index: 999999 !important;
       overflow-y: auto;
       overflow-x: hidden;
       box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
@@ -379,7 +379,7 @@
 </head>
 <body>
   <!-- Toggle Button -->
-  <button class="toggle-btn" id="sidebarToggle">
+  <button class="toggle-btn" id="sidebarToggle" style="z-index: 10000000000000000 !important;">
     <i class="fas fa-bars"></i>
   </button>
 

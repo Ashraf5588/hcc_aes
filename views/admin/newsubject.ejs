@@ -17,13 +17,14 @@
   <style>
     :root {
       --primary: #37b3f6;
-      --primary-hover: #2563eb;
-      --secondary: #9c1801;
+      --primary-hover: #1e88e5;
+      --secondary: #8b4513;
+      --secondary-hover: #724214;
       --success: #10b981;
       --danger: #ef4444;
       --warning: #f59e0b;
-      --dark: #1e293b;
-      --light-bg: #f8fafc;
+      --dark: #2c3e50;
+      --light-bg: #f0f8ff;
       --white: #ffffff;
       --gray-50: #f9fafb;
       --gray-100: #f3f4f6;
@@ -45,7 +46,7 @@
 
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 50%, var(--secondary) 100%);
       min-height: 100vh;
       color: var(--dark);
       line-height: 1.6;
@@ -82,7 +83,7 @@
       left: 0;
       right: 0;
       height: 4px;
-      background: linear-gradient(90deg, var(--primary), var(--success));
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
 
     .page-header h1 {
@@ -150,8 +151,35 @@
       font-size: 0.875rem;
       background: var(--white);
       color: var(--dark);
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
       font-family: inherit;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .form-control:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 4px rgba(55, 179, 246, 0.1);
+    }
+
+    /* Special styling for the centered select */
+    #sameas {
+      background: linear-gradient(to right, var(--light-bg), var(--white), var(--light-bg));
+      border-width: 2px;
+      font-weight: 500;
+      text-align: center;
+      text-align-last: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    #sameas:hover {
+      border-color: var(--secondary);
+      box-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
+    }
+
+    #sameas option {
+      text-align: center;
+      padding: 10px;
     }
 
     .form-control:focus {
@@ -202,6 +230,26 @@
       background: linear-gradient(135deg, var(--primary), var(--primary-hover));
       color: var(--white);
       box-shadow: var(--shadow-sm);
+      border: none;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+      z-index: -1;
+    }
+    
+    .btn-primary:hover::after {
+      left: 100%;
     }
 
     .btn-primary:hover {
@@ -296,13 +344,20 @@
     }
 
     .subject-badge {
-      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: var(--white);
       padding: 0.5rem 1rem;
       border-radius: 8px;
       font-size: 0.875rem;
       font-weight: 500;
       display: inline-block;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease;
+    }
+    
+    .subject-badge:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
     }
 
     /* Action Buttons */
@@ -461,7 +516,7 @@
           Subject Management
         </h1>
         <p>Create, edit, and manage subjects in your educational system</p>
-      </div>
+      </div> 
 
       <!-- Add/Edit Subject Form -->
       <div class="form-section">
@@ -472,37 +527,109 @@
 
         <form action="<%= editing ? `/admin/new/subject/${newsubjectData._id}` : '/admin/new/subject' %>" method="POST">
           <div class="form-group">
-            <label for="subject" class="form-label">Subject Name</label>
-            <input 
-              type="text" 
-              id="subject" 
-              name="newsubject" 
-              class="form-control" 
-              value="<%= editing ? newsubjectData.newsubject : '' %>" 
-              placeholder="Enter subject name (e.g., Mathematics, Science, History)"
-              required
-            >For Class:
-            <input type="text" placeholder="For Class" name="forClass" value="<%=editing?newsubjectData.forClass:''%>"  required id="forClass">
-            <select name="sameas" id="sameas">
-              <option value="" disabled selected>--Select Class--</option>
-               <% uniqueClass = new Set(studentClassdata.map(item => item.studentClass)); %>
-              <% uniqueClass.forEach(function(classData) { %>
+            <!-- Subject Name and For Class in one row -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label for="subject" class="form-label">Subject Name</label>
+                <input 
+                  type="text" 
+                  id="subject" 
+                  name="newsubject" 
+                  class="form-control" 
+                  value="<%= editing ? newsubjectData.newsubject : '' %>" 
+                  placeholder="Enter subject name (e.g., Mathematics, Science, History)"
+                  required
+                >
+              </div>
+              <div class="col-md-6">
+                <label for="forClass" class="form-label">For Class</label>
+              
+                <select name="forClass" id="forClass" class="form-control">
+                  <option value="" disabled selected>--Select Class--</option>
+                  <% uniqueClass = new Set(studentClassdata.map(item => item.studentClass)); %>
+                  <% uniqueClass.forEach(function(classData) { %>
+                    <option value="<%= classData %>" <%= editing && newsubjectData.forClass === classData ? 'selected' : '' %>>
+                      <%= classData %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
 
-                <option value="<%= classData %>" <%= editing && newsubjectData.forClass === classData ? 'selected' : '' %> >
-                  <%= classData %>
-                </option>
-              <% }) %>
+            <!-- Copy From Class Selection centered -->
+            <div class="row mb-4">
+              <div class="col-md-6 mx-auto">
+                <label for="sameas" class="form-label text-center w-100">Copy Format of another Class</label>
+                <select name="sameas" id="sameas" class="form-control">
+                  <option value="" disabled selected>--Select Class--</option>
+                  <% uniqueClass = new Set(studentClassdata.map(item => item.studentClass)); %>
+                  <% uniqueClass.forEach(function(classData) { %>
+                    <option value="<%= classData %>" <%= editing && newsubjectData.forClass === classData ? 'selected' : '' %>>
+                      <%= classData %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
 
-            </select>
-            
-            Theory:
-            <input type="Number" placeholder="Theory Marks" name="theory" value="<%=editing?newsubjectData.theory:''%>" required id="theory">
-Practical:
-            <input type="Number" placeholder="Practical Marks" name="practical" value="<%=editing?newsubjectData.practical:''%>" required id="practical">Total:
-            <input type="Number" placeholder="Total Marks" name="total" value="<%=editing?newsubjectData.total:''%>" required id="total">Minimum Pass Marks:
-            <input type="Number" placeholder="Passing Marks" name="passingMarks" value="<%=editing?newsubjectData.passingMarks:''%>" required id="passingMarks">
+            <!-- Marks Section -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label for="theory" class="form-label">Theory Marks</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Enter theory marks" 
+                  name="theory" 
+                  value="<%=editing?newsubjectData.theory:''%>" 
+                  required 
+                  id="theory"
+                  min="0"
+                >
+              </div>
+              <div class="col-md-6">
+                <label for="practical" class="form-label">Practical Marks</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Enter practical marks" 
+                  name="practical" 
+                  value="<%=editing?newsubjectData.practical:''%>" 
+                  required 
+                  id="practical"
+                  min="0"
+                >
+              </div>
+            </div>
 
-          </div>
+            <!-- Total and Passing Marks -->
+            <div class="row">
+              <div class="col-md-6">
+                <label for="total" class="form-label">Total Marks</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Total marks" 
+                  name="total" 
+                  value="<%=editing?newsubjectData.total:''%>" 
+                  required 
+                  id="total"
+                  readonly
+                >
+              </div>
+              <div class="col-md-6">
+                <label for="passingMarks" class="form-label">Minimum Pass Marks</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Enter passing marks" 
+                  name="passingMarks" 
+                  value="<%=editing?newsubjectData.passingMarks:''%>" 
+                  required 
+                  id="passingMarks"
+                  min="0">
+<br> 
+          </div><br> 
           <script>
 document.getElementById("subject").addEventListener("input", function() {
               this.value = this.value.toUpperCase();
@@ -543,7 +670,8 @@ document.getElementById("subject").addEventListener("input", function() {
       return;
     }
   });
-</script>
+</script> 
+
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-<%= editing ? 'save' : 'plus' %>"></i>
             <%= editing ? 'Update Subject' : 'Add Subject' %>
@@ -555,9 +683,9 @@ document.getElementById("subject").addEventListener("input", function() {
               Cancel
             </a>
           <% } %>
-        </form>
+        </form> 
       
-      </div>
+      </div><br> <br>
        <center><a href="/admin/subject" class="btn" style="background-color: var(--secondary); color: white;">
         <i class="fas fa-arrow-right"></i> Go to Set Question Format
         </a></center>

@@ -339,6 +339,74 @@
         .danger-zone .card-title {
             color: var(--danger-color);
         }
+
+        /* Student Form Styles */
+        .student-form {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .form-group label i {
+            margin-right: 0.5rem;
+            color: var(--accent-color);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            background-color: var(--background-color);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .form-group {
+                margin-bottom: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -354,6 +422,48 @@
             <p>Upload and manage student record data</p>
         </div>
 
+        <!-- Student Record Form -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-user-plus"></i>
+                <%= editing ? 'Edit Student Record' : 'Add New Student' %>
+            </h2>
+            <form action="/studentrecord/add" method="POST" class="student-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reg"><i class="fas fa-id-card"></i> Registration Number</label>
+                        <input type="text" name="reg" id="reg" placeholder="Enter registration number" value="<%=editing?studentrecordData.reg:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="roll"><i class="fas fa-list-ol"></i> Roll Number</label>
+                        <input type="text" name="roll" id="roll" placeholder="Enter roll number" value="<%=editing?studentrecordData.roll:''%>" required>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="name"><i class="fas fa-user"></i> Student Name</label>
+                    <input type="text" name="name" id="name" placeholder="Enter student name" value="<%=editing?studentrecordData.name:''%>" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="studentClass"><i class="fas fa-graduation-cap"></i> Class</label>
+                        <input type="text" name="studentClass" id="studentClass" placeholder="Enter class" value="<%=editing?studentrecordData.studentClass:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="section"><i class="fas fa-users"></i> Section</label>
+                        <input type="text" name="section" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.section:''%>" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas <%= editing ? 'fa-save' : 'fa-plus-circle' %>"></i>
+                        <%= editing ? 'Update Student Record' : 'Add Student Record' %>
+                    </button>
+                </div>
+            </form>
+        </div>
         <!-- File Upload Section -->
         <div class="card">
             <h2 class="card-title">
@@ -401,13 +511,7 @@
         </div>
         <center>Add new Student or Edit </center>
 
-<form action="/studentrecord" method="POST">
-    <input type="text" name="reg" id="reg" placeholder="Registration Number">
-    <input type="text" name="name" id="name" placeholder="Name">
-    <input type="roll" name="roll" id="roll" placeholder="Roll Number">
-    <input type="text" name="studentClass" id="studentClass" placeholder="Class">
-    <input type="text" name="section" id="section" placeholder="Section">
-</form>
+
         <table cellspacing="0" class="table table-striped" style="background-color: white;" id="studentrecordTable">
     <thead>
         <tr>
@@ -416,6 +520,7 @@
             <th>Name</th>
             <th>Class</th>
             <th>Section</th>
+            <th>Action</th>
 
         </tr>
     </thead>
@@ -427,7 +532,19 @@
                 <td><%= record.name %></td>
                 <td><%= record.studentClass %></td>
                 <td><%= record.section %></td>
-              
+                <td>
+                    <a href="/studentrecord/edit/<%= record._id %>?editing=true" class="btn btn-secondary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </td>
+                <td>
+                    <form action="/studentrecord/delete/<%= record._id %>" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </td>
+
             </tr>
         <% }) %>
     </tbody>
