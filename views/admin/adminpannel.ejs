@@ -548,9 +548,11 @@
     <div class="data-conten">
       <div class="data-header">
         <h2>Entry <span>Data</span></h2>
-<a href="/admin/term/FIRST"><span class="<%= terminal === 'FIRST' ? 'selected' : 'terminal-btn' %>" >First Term</span></a>
-      <a href="/admin/term/SECOND"><span class="<%= terminal === 'SECOND' ? 'selected' : 'terminal-btn' %>">Second Term</span></a>
-      <a href="/admin/term/THIRD"><span class="<%= terminal === 'THIRD' ? 'selected' : 'terminal-btn' %>">Third Term</span></a>
+<% terminals.forEach((terminal) => { %>
+          <a href="/admin/term/<%= terminal.terminal%>">
+            <span class="<%= terminal === 'FIRST' ? 'selected' : 'terminal-btn' %>"><%= terminal.terminal %></span>
+          </a>
+      <% }); %>
       </div>      <!-- Tabs for switching between views -->
       <div class="mb-4">
         <ul class="nav nav-tabs" id="viewTab" role="tablist">
